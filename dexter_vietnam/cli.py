@@ -31,12 +31,7 @@ console = Console(theme=Theme({
 
 BANNER = r"""
 [bold cyan]
- ____            _                 
-|  _ \  _____  _| |_ ___ _ __ 
-| | | |/ _ \ \/ / __/ _ \ '__|
-| |_| |  __/>  <| ||  __/ |   
-|____/ \___/_/\_\\__\___|_|   
-                                    
+    
 [/bold cyan][bold yellow]  Vietnam AI Trading Assistant 🇻🇳[/bold yellow]
 """
 
