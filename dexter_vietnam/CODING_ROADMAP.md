@@ -83,7 +83,7 @@ dexter_vietnam/
 
 ---
 
-## 📊 Module 2: Phân tích Cơ bản (P0)
+## 📊 Module 2: Phân tích Cơ bản (P0) ✅ COMPLETED
 
 **File**: `tools/vietnam/fundamental/`
 
@@ -193,7 +193,7 @@ dexter_vietnam/
 
 ---
 
-## ⚠️ Module 6: Quản lý Rủi ro (P2)
+## ✅ Module 6: Quản lý Rủi ro (P2) — **COMPLETED**
 
 **File**: `tools/vietnam/risk/company_risk.py`
 
@@ -207,7 +207,7 @@ dexter_vietnam/
 
 ---
 
-## 🔍 Module 7: Stock Screening (P2)
+## ✅ Module 7: Stock Screening (P2) — **COMPLETED**
 
 **File**: `tools/vietnam/screening/screener.py`
 
@@ -221,7 +221,7 @@ dexter_vietnam/
 
 ---
 
-## 🌐 Module 10: Market Overview (P1)
+## ✅ Module 10: Market Overview (P1) — **COMPLETED**
 
 **File**: `tools/vietnam/market/overview.py`
 
@@ -235,7 +235,7 @@ dexter_vietnam/
 
 ---
 
-## 🔔 Module 11: Alerts (P3)
+## ✅ Module 11: Alerts (P3) — **COMPLETED**
 
 **File**: `tools/vietnam/alerts/manager.py`
 
@@ -248,7 +248,7 @@ dexter_vietnam/
 
 ---
 
-## 📄 Module 12: Reporting (P3)
+## ✅ Module 12: Reporting (P3) — **COMPLETED**
 
 **File**: `tools/vietnam/reporting/generator.py`
 
@@ -270,7 +270,7 @@ dexter_vietnam/
 
 ---
 
-## 📚 Module 14: Education (P3)
+## 📚 Module 14: Education (P3) — **COMPLETED**
 
 **File**: `tools/vietnam/education/knowledge.py`
 
@@ -283,7 +283,7 @@ dexter_vietnam/
 
 ---
 
-## 👥 Module 15: Social (P3)
+## 👥 Module 15: Social (P3) — **COMPLETED**
 
 **File**: `tools/vietnam/social/community.py`
 
@@ -336,28 +336,28 @@ dexter_vietnam/
 ## 🗓️ Lộ trình 8 tuần
 
 ### Tuần 1-2: Core Infrastructure (P0)
-- [ ] Module 1: vnstock connector
-- [ ] Module 2: Fundamental analysis
-- [ ] Base tool system & registry
+- [x] Module 1: vnstock connector ✅
+- [x] Module 2: Fundamental analysis ✅
+- [x] Base tool system & registry ✅
 - [ ] Unit tests
 
 ### Tuần 3: Technical Analysis (P0)
-- [ ] Module 3: Indicators & signals
+- [x] Module 3: Indicators & signals ✅
 - [ ] Integration tests
 
 ### Tuần 4: Money Flow & News (P1)
-- [ ] Module 4: Foreign/Proprietary trading
-- [ ] Module 5: News aggregator & sentiment
+- [x] Module 4: Foreign/Proprietary trading ✅
+- [x] Module 5: News aggregator & sentiment ✅
 
 ### Tuần 5: Risk & Screening (P1-P2)
-- [ ] Module 6: Risk management
-- [ ] Module 7: Stock screening
-- [ ] Module 10: Market overview
+- [x] Module 6: Risk management ✅
+- [x] Module 7: Stock screening ✅
+- [x] Module 10: Market overview ✅
 
 ### Tuần 6: Agent Core
-- [ ] Agent orchestrator
-- [ ] Planner, Executor, Synthesizer
-- [ ] CLI interface (rich/click)
+- [x] Agent orchestrator ✅
+- [x] Planner, Executor, Synthesizer ✅
+- [x] CLI interface (rich/click) ✅
 
 ### Tuần 7: Interaction Tools (P3)
 - [ ] Module 11-15: Alerts, Reporting, Calculators, Education, Social
@@ -373,19 +373,19 @@ dexter_vietnam/
 
 | Module | Tên | Priority | Tuần | Status |
 |--------|-----|----------|------|--------|
-| 1 | Data Infrastructure | P0 | 1-2 | 🟡 In Progress |
-| 2 | Fundamental Analysis | P0 | 1-2 | ⚪ Not Started |
-| 3 | Technical Analysis | P0 | 3 | ⚪ Not Started |
-| 4 | Money Flow | P1 | 4 | ⚪ Not Started |
-| 5 | News & Events | P1 | 4 | ⚪ Not Started |
+| 1 | Data Infrastructure | P0 | 1-2 | ✅ **COMPLETED** |
+| 2 | Fundamental Analysis | P0 | 1-2 | ✅ **COMPLETED** |
+| 3 | Technical Analysis | P0 | 3 | ✅ **COMPLETED** |
+| 4 | Money Flow | P1 | 4 | ✅ **COMPLETED** |
+| 5 | News & Events | P1 | 4 | ✅ **COMPLETED** |
 | 6 | Risk Management | P2 | 5 | ⚪ Not Started |
 | 7 | Stock Screening | P2 | 5 | ⚪ Not Started |
 | 10 | Market Overview | P1 | 5 | ⚪ Not Started |
-| 11 | Alerts | P3 | 7 | ⚪ Not Started |
-| 12 | Reporting | P3 | 7 | ⚪ Not Started |
-| 13 | Calculators | P3 | 7 | ⚪ Not Started |
-| 14 | Education | P3 | 7 | ⚪ Not Started |
-| 15 | Social | P3 | 7 | ⚪ Not Started |
+| 11 | Alerts | P3 | 7 | ✅ **COMPLETED** |
+| 12 | Reporting | P3 | 7 | ✅ **COMPLETED** |
+| 13 | Calculators | P3 | 7 | ✅ **COMPLETED** |
+| 14 | Education | P3 | 7 | ✅ **COMPLETED** |
+| 15 | Social | P3 | 7 | ✅ **COMPLETED** |
 | 17 | Advanced AI | P4 | 8 | ⚪ Not Started |
 | 18 | Premium Features | P4 | 8 | ⚪ Not Started |
 
