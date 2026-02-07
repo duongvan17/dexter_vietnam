@@ -683,11 +683,15 @@ class AgentOrchestrator:
             logger.info("📝 Synthesizing response...")
             response = await self.synthesizer.synthesize(query, results)
 
+            # Build tool usage summary
+            elapsed = time.time() - start_time
+            tool_summary = self._build_tool_summary(plan, results, elapsed)
+            response = tool_summary + "\n\n" + response
+
             # Record in memory
             self.memory.add_turn("user", query)
             self.memory.add_turn("assistant", response)
 
-            elapsed = time.time() - start_time
             logger.info(f"✅ Completed in {elapsed:.1f}s")
 
             return response
@@ -711,6 +715,28 @@ class AgentOrchestrator:
         ]
         q = query.lower().strip()
         return any(q.startswith(g) or q == g for g in greetings)
+
+    def _build_tool_summary(
+        self, plan: Dict[str, Any], results: List[Dict[str, Any]], elapsed: float
+    ) -> str:
+        """Build a summary of tools used for the response."""
+        lines = ["---", "📦 **Tools đã sử dụng:**"]
+
+        for r in results:
+            tool = r.get("tool", "?")
+            action = r.get("action", "?")
+            success = r.get("success", False)
+            icon = "✅" if success else "❌"
+            lines.append(f"  {icon} `{tool}` → `{action}`")
+
+        intent = plan.get("intent", "")
+        if intent:
+            lines.append(f"\n🎯 **Ý định:** {intent}")
+
+        lines.append(f"⏱️ **Thời gian:** {elapsed:.1f}s")
+        lines.append("---")
+
+        return "\n".join(lines)
 
     async def direct_tool_call(
         self, tool_name: str, action: str, **params
