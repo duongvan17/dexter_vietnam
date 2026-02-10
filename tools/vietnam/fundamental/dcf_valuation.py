@@ -50,14 +50,14 @@ class DCFValuationTool(BaseTool):
             "Tính WACC, dự báo FCF, Terminal Value → Intrinsic Value."
         )
 
-    async def run(self, symbol: str, action: str = "valuation", **kwargs) -> Dict[str, Any]:
+    async def run(self, action: str = "valuation", symbol: str = "", **kwargs) -> Dict[str, Any]:
         """
         Args:
-            symbol: Mã cổ phiếu
             action: Hành động
                 - valuation: Định giá DCF đầy đủ (mặc định)
                 - wacc: Chỉ tính WACC
                 - sensitivity: Phân tích độ nhạy
+            symbol: Mã cổ phiếu
             **kwargs: Ghi đè các tham số mặc định
                 - risk_free_rate, market_return, beta, tax_rate,
                   cost_of_debt, terminal_growth, projection_years,
@@ -70,6 +70,8 @@ class DCFValuationTool(BaseTool):
         }
         if action not in action_map:
             return {"success": False, "error": f"Action không hợp lệ: {action}"}
+        if not symbol:
+            return {"success": False, "error": "Symbol không được để trống"}
         try:
             return await action_map[action](symbol, **kwargs)
         except Exception as e:
@@ -258,13 +260,13 @@ class DCFValuationTool(BaseTool):
                     flat[k[1]] = v
                 else:
                     flat[k] = v
-            shares_raw = flat.get("Số CP lưu hành (Triệu CP)", 0) or 0
-            if shares_raw > 0:
-                shares_outstanding = shares_raw  # vnstock trả về số CP thô (không phải triệu)
+            shares_million = flat.get("Số CP lưu hành (Triệu CP)", 0) or 0
+            if shares_million > 0:
+                shares_outstanding = shares_million * 1e6  # Chuyển triệu CP → số CP thực
 
         # Intrinsic value per share (VNĐ)
-        # equity_val tỷ đồng, shares_outstanding = raw share count
-        # intrinsic = equity_val * 1e9 / shares_outstanding
+        # equity_val: tỷ đồng, shares_outstanding: số cổ phiếu thực tế
+        # intrinsic = equity_val (tỷ đồng) * 1e9 / shares_outstanding
         intrinsic_per_share = (equity_val * 1e9 / shares_outstanding) if shares_outstanding > 0 else 0
 
         # Lấy giá thị trường

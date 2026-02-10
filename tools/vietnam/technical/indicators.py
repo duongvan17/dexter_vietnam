@@ -63,11 +63,11 @@ class TechnicalIndicatorsTool(BaseTool):
             "EMA/SMA, Stochastic Oscillator, ATR."
         )
 
-    async def run(self, symbol: str, action: str = "all", **kwargs) -> Dict[str, Any]:
+    async def run(self, action: str = "all", symbol: str = "", **kwargs) -> Dict[str, Any]:
         """
         Args:
-            symbol: Mã cổ phiếu (VD: VNM, FPT, VCB)
             action: Chỉ báo cần tính
+            symbol: Mã cổ phiếu (VD: VNM, FPT, VCB)
                 - all: Tất cả chỉ báo (mặc định)
                 - rsi: RSI
                 - macd: MACD
@@ -96,6 +96,8 @@ class TechnicalIndicatorsTool(BaseTool):
         }
         if action not in action_map:
             return {"success": False, "error": f"Action không hợp lệ: {action}"}
+        if not symbol:
+            return {"success": False, "error": "Symbol không được để trống"}
         try:
             return await action_map[action](symbol, **kwargs)
         except Exception as e:
@@ -148,10 +150,13 @@ class TechnicalIndicatorsTool(BaseTool):
     def _serialize(self, df: pd.DataFrame, columns: List[str], last_n: Optional[int] = None) -> List[Dict]:
         """Chuyển DataFrame thành list of dict, chỉ giữ các cột cần thiết."""
         out = []
+        # Lọc chỉ lấy các columns thực sự tồn tại trong DataFrame
+        valid_cols = [col for col in columns if col in df.columns]
+        
         for _, row in df.iterrows():
             record = {"date": row["date"].strftime("%Y-%m-%d") if pd.notna(row["date"]) else None}
-            for col in columns:
-                record[col] = self._safe_round(row.get(col))
+            for col in valid_cols:
+                record[col] = self._safe_round(row[col])
             out.append(record)
         return self._tail(out, last_n)
 
@@ -623,13 +628,17 @@ class TechnicalIndicatorsTool(BaseTool):
 
         # Serialize tất cả
         all_cols = [
-            "close", "volume", "rsi",
+            "close", "rsi",
             "macd", "macd_signal", "macd_histogram",
             "bb_upper", "bb_middle", "bb_lower", "bb_pband",
             "stoch_k", "stoch_d", "atr",
         ]
         all_cols += [f"sma_{w}" for w in self.DEFAULTS["sma_windows"]]
         all_cols += [f"ema_{w}" for w in self.DEFAULTS["ema_windows"]]
+        
+        # Thêm volume nếu có trong DataFrame
+        if "volume" in df.columns:
+            all_cols.insert(1, "volume")
 
         return {
             "success": True,

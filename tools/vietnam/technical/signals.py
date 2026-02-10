@@ -49,11 +49,11 @@ class TradingSignalsTool(BaseTool):
             "MACD crossover, Golden/Death Cross, Support/Resistance, Trend."
         )
 
-    async def run(self, symbol: str, action: str = "all", **kwargs) -> Dict[str, Any]:
+    async def run(self, action: str = "all", symbol: str = "", **kwargs) -> Dict[str, Any]:
         """
         Args:
-            symbol: Mã cổ phiếu (VD: VNM, FPT, VCB)
             action: Loại tín hiệu
+            symbol: Mã cổ phiếu (VD: VNM, FPT, VCB)
                 - all: Tất cả tín hiệu (mặc định)
                 - rsi_signals: Tín hiệu RSI
                 - macd_signals: Tín hiệu MACD crossover
@@ -77,6 +77,8 @@ class TradingSignalsTool(BaseTool):
         }
         if action not in action_map:
             return {"success": False, "error": f"Action không hợp lệ: {action}"}
+        if not symbol:
+            return {"success": False, "error": "Symbol không được để trống"}
         try:
             return await action_map[action](symbol, **kwargs)
         except Exception as e:

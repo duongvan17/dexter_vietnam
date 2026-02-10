@@ -46,10 +46,9 @@ class FinancialRatiosTool(BaseTool):
             "Debt/Equity, Current Ratio, EPS, BVPS, Margins."
         )
 
-    async def run(self, symbol: str, action: str = "all", **kwargs) -> Dict[str, Any]:
+    async def run(self, action: str = "all", symbol: str = "", **kwargs) -> Dict[str, Any]:
         """
         Args:
-            symbol: Mã cổ phiếu
             action: Hành động
                 - all: Tất cả chỉ số + đánh giá (mặc định)
                 - valuation: Chỉ số định giá (P/E, P/B, P/S, EV/EBITDA)
@@ -58,6 +57,7 @@ class FinancialRatiosTool(BaseTool):
                 - leverage: Chỉ số đòn bẩy (D/E, Interest Coverage)
                 - per_share: Chỉ số trên mỗi CP (EPS, BVPS)
                 - compare: So sánh với năm trước
+            symbol: Mã cổ phiếu
         """
         action_map = {
             'all': self.get_all_ratios,
@@ -70,6 +70,8 @@ class FinancialRatiosTool(BaseTool):
         }
         if action not in action_map:
             return {"success": False, "error": f"Action không hợp lệ: {action}"}
+        if not symbol:
+            return {"success": False, "error": "Symbol không được để trống"}
         try:
             return await action_map[action](symbol, **kwargs)
         except Exception as e:

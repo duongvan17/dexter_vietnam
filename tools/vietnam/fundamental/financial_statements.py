@@ -116,16 +116,16 @@ class FinancialStatementsTool(BaseTool):
             "Income Statement, Cash Flow. Tính tăng trưởng YoY."
         )
 
-    async def run(self, symbol: str, action: str = "summary", **kwargs) -> Dict[str, Any]:
+    async def run(self, action: str = "summary", symbol: str = "", **kwargs) -> Dict[str, Any]:
         """
         Args:
-            symbol: Mã cổ phiếu
             action: Hành động
                 - summary: Tổng quan tài chính (mặc định)
                 - balance_sheet: Bảng cân đối kế toán
                 - income_statement: KQKD
                 - cash_flow: Lưu chuyển tiền tệ
                 - growth: Phân tích tăng trưởng YoY
+            symbol: Mã cổ phiếu
             **kwargs:
                 period: 'year' hoặc 'quarter' (mặc định 'year')
                 years: Số năm lấy dữ liệu (mặc định 5)
@@ -139,6 +139,8 @@ class FinancialStatementsTool(BaseTool):
         }
         if action not in action_map:
             return {"success": False, "error": f"Action không hợp lệ: {action}"}
+        if not symbol:
+            return {"success": False, "error": "Symbol không được để trống"}
         try:
             return await action_map[action](symbol, **kwargs)
         except Exception as e:
