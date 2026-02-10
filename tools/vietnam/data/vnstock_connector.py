@@ -1,9 +1,4 @@
-"""
-Module 1: Hạ tầng Dữ liệu (P0)
-VNStock Connector - Kết nối với thư viện vnstock3 để lấy dữ liệu chứng khoán Việt Nam
 
-Theo CODING_ROADMAP.md - Module 1
-"""
 from dexter_vietnam.tools.base import BaseTool
 from typing import Dict, Any, Optional, List
 from datetime import datetime, timedelta
@@ -16,16 +11,7 @@ except ImportError:
 
 
 class VnstockTool(BaseTool):
-    """
-    Tool chính để lấy dữ liệu từ vnstock
-    
-    Chức năng theo roadmap Module 1:
-    1. get_stock_overview(symbol) - Thông tin công ty
-    2. get_stock_price(symbol, start, end) - Lịch sử giá
-    3. get_financial_report(symbol, type, period) - Báo cáo tài chính
-    4. get_financial_ratio(symbol, period) - Chỉ số tài chính
-    """
-    
+
     def __init__(self):
         """Khởi tạo VnstockTool"""
         if Vnstock is None:
@@ -41,7 +27,7 @@ class VnstockTool(BaseTool):
         return "vnstock_connector"
     
     def get_description(self) -> str:
-        """Trả về mô tả tool"""
+
         return """VNStock Data Connector - Lấy dữ liệu chứng khoán Việt Nam.
         
         Chức năng:
@@ -49,28 +35,18 @@ class VnstockTool(BaseTool):
         - Lịch sử giá OHLCV
         - Báo cáo tài chính (Balance Sheet, Income Statement, Cash Flow)
         - Chỉ số tài chính (P/E, ROE, ROA, etc.)
+        - Chỉ số thị trường (VNINDEX, VN30, HNX)
         """
     
     async def run(self, action: str, **kwargs) -> Dict[str, Any]:
-        """
-        Thực thi action tương ứng
-        
-        Args:
-            action: Hành động cần thực hiện
-                - stock_overview: Lấy thông tin công ty
-                - stock_price: Lấy lịch sử giá
-                - financial_report: Lấy báo cáo tài chính
-                - financial_ratio: Lấy chỉ số tài chính
-            **kwargs: Tham số cho từng action
-        
-        Returns:
-            Dict chứa kết quả
-        """
+
         action_map = {
             'stock_overview': self.get_stock_overview,
             'stock_price': self.get_stock_price,
             'financial_report': self.get_financial_report,
             'financial_ratio': self.get_financial_ratio,
+            'foreign_trading': self.get_foreign_trading,
+            'market_index': self.get_market_index,
         }
         
         if action not in action_map:
@@ -95,32 +71,9 @@ class VnstockTool(BaseTool):
                 source='VCI'
             )
         return self._stock_cache[symbol]
-    
-    # ===================================================================
-    # 1. GET_STOCK_OVERVIEW - Thông tin công ty
-    # ===================================================================
-    
+
     async def get_stock_overview(self, symbol: str) -> Dict[str, Any]:
-        """
-        Lấy thông tin tổng quan về công ty
-        
-        vnstock API: stock.company.profile()
-        
-        Args:
-            symbol: Mã cổ phiếu (VD: VNM, FPT, VCB)
-        
-        Returns:
-            {
-                "success": True,
-                "symbol": str,
-                "data": {
-                    "companyName": str,
-                    "exchange": str,
-                    "industry": str,
-                    ...
-                }
-            }
-        """
+
         try:
             stock = self._get_stock(symbol)
             
@@ -153,7 +106,7 @@ class VnstockTool(BaseTool):
                     "data": data
                 }
             else:
-                # Fallback: Trả về thông tin cơ bản
+
                 return {
                     "success": True,
                     "symbol": symbol.upper(),
@@ -168,10 +121,7 @@ class VnstockTool(BaseTool):
                 "success": False,
                 "error": f"Lỗi lấy thông tin công ty {symbol}: {str(e)}"
             }
-    
-    # ===================================================================
-    # 2. GET_STOCK_PRICE - Lịch sử giá
-    # ===================================================================
+
     
     async def get_stock_price(
         self, 
@@ -180,37 +130,14 @@ class VnstockTool(BaseTool):
         end: Optional[str] = None,
         interval: str = '1D'
     ) -> Dict[str, Any]:
-        """
-        Lấy lịch sử giá OHLCV
-        
-        vnstock API: stock.quote.history()
-        
-        Args:
-            symbol: Mã cổ phiếu
-            start: Ngày bắt đầu (YYYY-MM-DD), mặc định 1 năm trước
-            end: Ngày kết thúc (YYYY-MM-DD), mặc định hôm nay
-            interval: Chu kỳ (1D, 1W, 1M)
-        
-        Returns:
-            {
-                "success": True,
-                "symbol": str,
-                "start_date": str,
-                "end_date": str,
-                "count": int,
-                "data": [
-                    {"time": str, "open": float, "high": float, "low": float, 
-                     "close": float, "volume": int},
-                    ...
-                ]
-            }
-        """
+
         try:
-            # Thiết lập ngày mặc định - lấy dữ liệu 30 ngày gần nhất
+            # Thiết lập ngày mặc định - lấy dữ liệu 1 năm gần nhất (đủ cho SMA 200)
             if end is None:
                 end = datetime.now().strftime('%Y-%m-%d')
             if start is None:
-                start = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+                # Lấy 365 ngày (~1 năm) để đủ tính SMA 200
+                start = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
             
             stock = self._get_stock(symbol)
             
@@ -250,8 +177,7 @@ class VnstockTool(BaseTool):
                     "actual_end": actual_end or end,
                     "interval": interval,
                     "count": len(data_records),
-                    "data": data_records[:10],  # Chỉ lấy 10 records gần nhất để tiết kiệm
-                    "note": f"Showing latest 10 of {len(data_records)} records. Data available from {actual_start} to {actual_end}."
+                    "data": data_records,  # Trả về tất cả dữ liệu cho indicators
                 }
             else:
                 return {
@@ -265,41 +191,14 @@ class VnstockTool(BaseTool):
                 "error": f"Lỗi lấy lịch sử giá {symbol}: {str(e)}"
             }
     
-    # ===================================================================
-    # 3. GET_FINANCIAL_REPORT - Báo cáo tài chính
-    # ===================================================================
-    
+
     async def get_financial_report(
         self, 
         symbol: str, 
         report_type: str = 'BalanceSheet',
         period: str = 'year'
     ) -> Dict[str, Any]:
-        """
-        Lấy báo cáo tài chính
-        
-        vnstock API: 
-        - stock.finance.balance_sheet()
-        - stock.finance.income_statement()
-        - stock.finance.cash_flow()
-        
-        Args:
-            symbol: Mã cổ phiếu
-            report_type: Loại báo cáo
-                - BalanceSheet: Bảng cân đối kế toán
-                - IncomeStatement: Báo cáo kết quả kinh doanh
-                - CashFlow: Báo cáo lưu chuyển tiền tệ
-            period: Chu kỳ (year, quarter)
-        
-        Returns:
-            {
-                "success": True,
-                "symbol": str,
-                "report_type": str,
-                "period": str,
-                "data": [...]
-            }
-        """
+
         try:
             stock = self._get_stock(symbol)
             
@@ -340,41 +239,12 @@ class VnstockTool(BaseTool):
                 "error": f"Lỗi lấy báo cáo tài chính {symbol}: {str(e)}"
             }
     
-    # ===================================================================
-    # 4. GET_FINANCIAL_RATIO - Chỉ số tài chính
-    # ===================================================================
-    
     async def get_financial_ratio(
         self, 
         symbol: str, 
-        period: str = 'year'
+        period: str = 'quarter'
     ) -> Dict[str, Any]:
-        """
-        Lấy các chỉ số tài chính (P/E, ROE, ROA, etc.)
-        
-        vnstock API: stock.finance.ratio()
-        
-        Args:
-            symbol: Mã cổ phiếu
-            period: Chu kỳ (year, quarter)
-        
-        Returns:
-            {
-                "success": True,
-                "symbol": str,
-                "period": str,
-                "data": [
-                    {
-                        "year": str,
-                        "PE": float,
-                        "PB": float,
-                        "ROE": float,
-                        "ROA": float,
-                        ...
-                    }
-                ]
-            }
-        """
+
         try:
             stock = self._get_stock(symbol)
             
@@ -400,4 +270,156 @@ class VnstockTool(BaseTool):
             return {
                 "success": False,
                 "error": f"Lỗi lấy chỉ số tài chính {symbol}: {str(e)}"
+            }
+    
+    async def get_foreign_trading(
+        self,
+        symbol: str,
+        start: Optional[str] = None,
+        end: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Lấy dữ liệu giao dịch khối ngoại."""
+        try:
+            stock = self._get_stock(symbol)
+            
+            # Thiết lập ngày mặc định
+            if end is None:
+                end = datetime.now().strftime('%Y-%m-%d')
+            if start is None:
+                start = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+            
+            # Thử lấy dữ liệu foreign trading
+            foreign_data = None
+            
+            # Method 1: foreign_trading
+            try:
+                foreign_data = stock.trading.foreign_trading(
+                    symbol=symbol.upper(),
+                    start_date=start,
+                    end_date=end
+                )
+            except (AttributeError, Exception):
+                pass
+            
+            # Method 2: price_depth với foreign info
+            if foreign_data is None:
+                try:
+                    foreign_data = stock.trading.price_depth(symbol=symbol.upper())
+                except (AttributeError, Exception):
+                    pass
+            
+            if foreign_data is not None:
+                if isinstance(foreign_data, pd.DataFrame) and not foreign_data.empty:
+                    data_records = foreign_data.to_dict('records')
+                    
+                    # Convert timestamps
+                    for record in data_records:
+                        for key, val in record.items():
+                            if hasattr(val, 'strftime'):
+                                record[key] = val.strftime('%Y-%m-%d')
+                    
+                    return {
+                        "success": True,
+                        "symbol": symbol.upper(),
+                        "start": start,
+                        "end": end,
+                        "count": len(data_records),
+                        "data": data_records
+                    }
+                elif isinstance(foreign_data, dict):
+                    return {
+                        "success": True,
+                        "symbol": symbol.upper(),
+                        "data": foreign_data
+                    }
+            
+            # Fallback: return empty but successful
+            return {
+                "success": True,
+                "symbol": symbol.upper(),
+                "data": [],
+                "note": "Dữ liệu khối ngoại không khả dụng qua vnstock API. Có thể cần nguồn khác."
+            }
+        
+        except Exception as e:
+            return {
+                "success": False,
+                "error": f"Lỗi lấy giao dịch khối ngoại {symbol}: {str(e)}"
+            }
+    
+    async def get_market_index(
+        self,
+        index_code: str = "VNINDEX",
+        start: Optional[str] = None,
+        end: Optional[str] = None,
+        interval: str = '1D'
+    ) -> Dict[str, Any]:
+        """Lấy dữ liệu chỉ số thị trường (VNINDEX, VN30, HNX, etc.)."""
+        try:
+            # Thiết lập ngày mặc định
+            if end is None:
+                end = datetime.now().strftime('%Y-%m-%d')
+            if start is None:
+                start = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
+            
+            stock = self._get_stock("VNM")  # Dummy stock để access trading API
+            
+            # Lấy dữ liệu chỉ số
+            try:
+                index_df = stock.quote.history(
+                    symbol=index_code,
+                    start=start,
+                    end=end,
+                    interval=interval
+                )
+            except Exception:
+                # Fallback: thử với vnstock trực tiếp
+                index_df = self.vnstock.stock(
+                    symbol=index_code,
+                    source='VCI'
+                ).quote.history(
+                    symbol=index_code,
+                    start=start,
+                    end=end,
+                    interval=interval
+                )
+            
+            if index_df is not None and not index_df.empty:
+                data_records = index_df.to_dict('records')
+                
+                # Convert Timestamp to string
+                actual_start = None
+                actual_end = None
+                
+                for record in data_records:
+                    if 'time' in record and hasattr(record['time'], 'strftime'):
+                        date_str = record['time'].strftime('%Y-%m-%d')
+                        record['time'] = date_str
+                        
+                        if actual_start is None or date_str < actual_start:
+                            actual_start = date_str
+                        if actual_end is None or date_str > actual_end:
+                            actual_end = date_str
+                
+                return {
+                    "success": True,
+                    "index": index_code,
+                    "requested_start": start,
+                    "requested_end": end,
+                    "actual_start": actual_start or start,
+                    "actual_end": actual_end or end,
+                    "interval": interval,
+                    "count": len(data_records),
+                    "data": data_records,
+                }
+            else:
+                return {
+                    "success": False,
+                    "error": f"Không có dữ liệu cho chỉ số {index_code}"
+                }
+        
+        except Exception as e:
+            return {
+                "success": False,
+                "error": f"Lỗi lấy dữ liệu chỉ số {index_code}: {str(e)}"
             }

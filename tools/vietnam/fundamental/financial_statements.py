@@ -1,9 +1,4 @@
-"""
-Module 2.1: Financial Statements Parser
-Parse và phân tích báo cáo tài chính từ dữ liệu vnstock
 
-Theo CODING_ROADMAP.md - Module 2
-"""
 from dexter_vietnam.tools.base import BaseTool
 from dexter_vietnam.tools.vietnam.data.vnstock_connector import VnstockTool
 from typing import Dict, Any, Optional, List
@@ -12,16 +7,6 @@ import pandas as pd
 
 
 class FinancialStatementsTool(BaseTool):
-    """
-    Parse và phân tích 3 báo cáo tài chính:
-    - Balance Sheet (Bảng cân đối kế toán)
-    - Income Statement (Báo cáo kết quả kinh doanh)
-    - Cash Flow (Báo cáo lưu chuyển tiền tệ)
-    """
-
-    # ===================================================================
-    # Mapping tên cột tiếng Việt → key chuẩn (English)
-    # ===================================================================
 
     BALANCE_SHEET_MAP = {
         # Tài sản
@@ -146,9 +131,6 @@ class FinancialStatementsTool(BaseTool):
         except Exception as e:
             return {"success": False, "error": str(e)}
 
-    # ===================================================================
-    # Helpers
-    # ===================================================================
 
     def _normalize(self, records: List[Dict], mapping: Dict[str, str]) -> List[Dict[str, Any]]:
         """Chuẩn hoá tên cột Vietnamese → English keys."""
@@ -181,9 +163,6 @@ class FinancialStatementsTool(BaseTool):
             raise ValueError(result.get("error", "Không lấy được dữ liệu"))
         return result["data"]
 
-    # ===================================================================
-    # 1. BALANCE SHEET
-    # ===================================================================
 
     async def get_balance_sheet(
         self, symbol: str, period: str = 'year', years: int = 5, **_
@@ -224,9 +203,6 @@ class FinancialStatementsTool(BaseTool):
             "data": formatted,
         }
 
-    # ===================================================================
-    # 2. INCOME STATEMENT
-    # ===================================================================
 
     async def get_income_statement(
         self, symbol: str, period: str = 'year', years: int = 5, **_
@@ -280,9 +256,6 @@ class FinancialStatementsTool(BaseTool):
             "data": formatted,
         }
 
-    # ===================================================================
-    # 3. CASH FLOW
-    # ===================================================================
 
     async def get_cash_flow(
         self, symbol: str, period: str = 'year', years: int = 5, **_
@@ -327,9 +300,6 @@ class FinancialStatementsTool(BaseTool):
             "data": formatted,
         }
 
-    # ===================================================================
-    # 4. FINANCIAL SUMMARY (Tổng quan)
-    # ===================================================================
 
     async def get_financial_summary(
         self, symbol: str, period: str = 'year', years: int = 3, **_
@@ -388,9 +358,6 @@ class FinancialStatementsTool(BaseTool):
             },
         }
 
-    # ===================================================================
-    # 5. GROWTH ANALYSIS (Phân tích tăng trưởng YoY)
-    # ===================================================================
 
     async def get_growth_analysis(
         self, symbol: str, period: str = 'year', years: int = 5, **_

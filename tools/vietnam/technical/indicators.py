@@ -1,10 +1,4 @@
-"""
-Module 3.1: Technical Indicators
-Tính toán các chỉ báo kỹ thuật cho cổ phiếu Việt Nam
 
-Theo CODING_ROADMAP.md - Module 3
-Sử dụng thư viện `ta` (Technical Analysis Library in Python)
-"""
 from dexter_vietnam.tools.base import BaseTool
 from dexter_vietnam.tools.vietnam.data.vnstock_connector import VnstockTool
 from typing import Dict, Any, Optional, List
@@ -21,15 +15,6 @@ except ImportError:
 
 
 class TechnicalIndicatorsTool(BaseTool):
-    """
-    Tính toán chỉ báo kỹ thuật:
-    - RSI (Relative Strength Index)
-    - MACD (Moving Average Convergence Divergence)
-    - Bollinger Bands
-    - EMA / SMA (Exponential / Simple Moving Average)
-    - Stochastic Oscillator
-    - ATR (Average True Range)
-    """
 
     # Tham số mặc định
     DEFAULTS = {
@@ -64,25 +49,7 @@ class TechnicalIndicatorsTool(BaseTool):
         )
 
     async def run(self, action: str = "all", symbol: str = "", **kwargs) -> Dict[str, Any]:
-        """
-        Args:
-            action: Chỉ báo cần tính
-            symbol: Mã cổ phiếu (VD: VNM, FPT, VCB)
-                - all: Tất cả chỉ báo (mặc định)
-                - rsi: RSI
-                - macd: MACD
-                - bollinger: Bollinger Bands
-                - sma: Simple Moving Average
-                - ema: Exponential Moving Average
-                - stochastic: Stochastic Oscillator
-                - atr: Average True Range
-                - summary: Tổng hợp giá trị mới nhất + đánh giá
-            **kwargs:
-                start: Ngày bắt đầu (YYYY-MM-DD)
-                end: Ngày kết thúc (YYYY-MM-DD)
-                window / period: Chu kỳ tính toán
-                last_n: Chỉ trả về N phiên gần nhất
-        """
+
         action_map = {
             "all": self._get_all_indicators,
             "rsi": self._get_rsi,
@@ -103,9 +70,6 @@ class TechnicalIndicatorsTool(BaseTool):
         except Exception as e:
             return {"success": False, "error": str(e)}
 
-    # ===================================================================
-    # Helpers
-    # ===================================================================
 
     async def _fetch_price_df(
         self, symbol: str, start: Optional[str] = None, end: Optional[str] = None
@@ -160,9 +124,6 @@ class TechnicalIndicatorsTool(BaseTool):
             out.append(record)
         return self._tail(out, last_n)
 
-    # ===================================================================
-    # 1. RSI (Relative Strength Index)
-    # ===================================================================
 
     async def _get_rsi(self, symbol: str, **kwargs) -> Dict[str, Any]:
         """
@@ -206,9 +167,6 @@ class TechnicalIndicatorsTool(BaseTool):
             return "Thiên tăng (60-70)"
         return "Thiên giảm (30-40)"
 
-    # ===================================================================
-    # 2. MACD (Moving Average Convergence Divergence)
-    # ===================================================================
 
     async def _get_macd(self, symbol: str, **kwargs) -> Dict[str, Any]:
         """
@@ -273,9 +231,6 @@ class TechnicalIndicatorsTool(BaseTool):
 
         return "Trung tính"
 
-    # ===================================================================
-    # 3. Bollinger Bands
-    # ===================================================================
 
     async def _get_bollinger(self, symbol: str, **kwargs) -> Dict[str, Any]:
         """
@@ -340,9 +295,6 @@ class TechnicalIndicatorsTool(BaseTool):
 
         return " | ".join(parts)
 
-    # ===================================================================
-    # 4. SMA (Simple Moving Average)
-    # ===================================================================
 
     async def _get_sma(self, symbol: str, **kwargs) -> Dict[str, Any]:
         """SMA - Đường trung bình giản đơn."""
@@ -374,9 +326,6 @@ class TechnicalIndicatorsTool(BaseTool):
             "data": self._serialize(df, ["close"] + cols, last_n),
         }
 
-    # ===================================================================
-    # 5. EMA (Exponential Moving Average)
-    # ===================================================================
 
     async def _get_ema(self, symbol: str, **kwargs) -> Dict[str, Any]:
         """EMA - Đường trung bình lũy thừa (phản ứng nhanh hơn SMA)."""
@@ -447,9 +396,6 @@ class TechnicalIndicatorsTool(BaseTool):
 
         return " | ".join(parts)
 
-    # ===================================================================
-    # 6. Stochastic Oscillator
-    # ===================================================================
 
     async def _get_stochastic(self, symbol: str, **kwargs) -> Dict[str, Any]:
         """
@@ -511,9 +457,6 @@ class TechnicalIndicatorsTool(BaseTool):
 
         return " | ".join(parts)
 
-    # ===================================================================
-    # 7. ATR (Average True Range)
-    # ===================================================================
 
     async def _get_atr(self, symbol: str, **kwargs) -> Dict[str, Any]:
         """
@@ -564,9 +507,6 @@ class TechnicalIndicatorsTool(BaseTool):
             return f"Biến động trung bình ({atr_pct}%)"
         return f"Biến động thấp ({atr_pct}%)"
 
-    # ===================================================================
-    # 8. ALL - Tất cả chỉ báo
-    # ===================================================================
 
     async def _get_all_indicators(self, symbol: str, **kwargs) -> Dict[str, Any]:
         """Tính toán tất cả chỉ báo kỹ thuật trên cùng 1 bộ dữ liệu."""
@@ -648,9 +588,6 @@ class TechnicalIndicatorsTool(BaseTool):
             "data": self._serialize(df, all_cols, last_n),
         }
 
-    # ===================================================================
-    # 9. SUMMARY - Tổng hợp mới nhất + Đánh giá
-    # ===================================================================
 
     async def _get_summary(self, symbol: str, **kwargs) -> Dict[str, Any]:
         """Trả về snapshot giá trị mới nhất của mọi chỉ báo + đánh giá tổng hợp."""

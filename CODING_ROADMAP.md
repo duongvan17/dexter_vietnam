@@ -43,8 +43,6 @@ dexter_vietnam/
 │       ├── alerts/         # Module 11: Cảnh báo
 │       ├── reporting/      # Module 12: Báo cáo
 │       ├── calculators/    # Module 13: Tính toán
-│       ├── education/      # Module 14: Giáo dục
-│       ├── social/         # Module 15: Cộng đồng
 │       ├── ai/             # Module 17: AI nâng cao
 │       └── premium/        # Module 18: Premium
 ├── model/              # LLM wrapper
@@ -270,30 +268,6 @@ dexter_vietnam/
 
 ---
 
-## 📚 Module 14: Education (P3) — **COMPLETED**
-
-**File**: `tools/vietnam/education/knowledge.py`
-
-### Chức năng
-- `get_term_definition(term)` - Giải thích thuật ngữ
-- `get_tutorial(topic)` - Hướng dẫn
-- `get_case_study(symbol)` - Case study
-
-**Storage**: Vector DB (ChromaDB/Pinecone) hoặc JSON
-
----
-
-## 👥 Module 15: Social (P3) — **COMPLETED**
-
-**File**: `tools/vietnam/social/community.py`
-
-### Chức năng
-- `get_top_portfolios()` - Top danh mục hiệu quả
-- `get_leaderboard()` - Bảng xếp hạng
-- `share_portfolio(portfolio_id)` - Chia sẻ danh mục
-
----
-
 ## 🤖 Module 17: Advanced AI (P4)
 
 **File**: `tools/vietnam/ai/prediction.py`
@@ -360,7 +334,7 @@ dexter_vietnam/
 - [x] CLI interface (rich/click) ✅
 
 ### Tuần 7: Interaction Tools (P3)
-- [ ] Module 11-15: Alerts, Reporting, Calculators, Education, Social
+- [x] Module 11-13: Alerts, Reporting, Calculators ✅
 
 ### Tuần 8: Advanced & Polish (P4)
 - [ ] Module 17-18: AI prediction, Premium features
@@ -384,8 +358,6 @@ dexter_vietnam/
 | 11 | Alerts | P3 | 7 | ✅ **COMPLETED** |
 | 12 | Reporting | P3 | 7 | ✅ **COMPLETED** |
 | 13 | Calculators | P3 | 7 | ✅ **COMPLETED** |
-| 14 | Education | P3 | 7 | ✅ **COMPLETED** |
-| 15 | Social | P3 | 7 | ✅ **COMPLETED** |
 | 17 | Advanced AI | P4 | 8 | ⚪ Not Started |
 | 18 | Premium Features | P4 | 8 | ⚪ Not Started |
 

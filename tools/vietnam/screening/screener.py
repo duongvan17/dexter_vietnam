@@ -1,32 +1,19 @@
-"""
-Module 7: Stock Screening (Lọc cổ phiếu)
 
-Theo CODING_ROADMAP.md - Module 7:
-- screen_value_stocks: Lọc CP giá trị (P/E<15, P/B<1.5, ROE>15%, D/E<1)
-- screen_growth_stocks: Lọc CP tăng trưởng
-- screen_oversold: Lọc CP oversold (RSI<30)
-- screen_by_industry: Lọc theo ngành
-"""
 from dexter_vietnam.tools.base import BaseTool
 from dexter_vietnam.tools.vietnam.data.vnstock_connector import VnstockTool
+from dexter_vietnam.tools.vietnam.fundamental.ratios import FinancialRatiosTool
 from typing import Dict, Any, Optional, List
 from datetime import datetime, timedelta
 import math
 import pandas as pd
 import ta
+import asyncio
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class StockScreenerTool(BaseTool):
-    """
-    Sàng lọc cổ phiếu theo nhiều tiêu chí:
-    - Value: P/E, P/B, ROE, D/E
-    - Growth: Tăng trưởng doanh thu, lợi nhuận, EPS
-    - Oversold: RSI < 30
-    - Overbought: RSI > 70
-    - Industry: Lọc theo ngành
-    - Custom: Bộ lọc tuỳ chỉnh
-    - Dividend: Cổ tức cao
-    """
 
     # Danh sách blue-chip + mid-cap phổ biến để scan
     DEFAULT_UNIVERSE = [
@@ -80,6 +67,7 @@ class StockScreenerTool(BaseTool):
 
     def __init__(self):
         self._data_tool = VnstockTool()
+        self._ratio_tool = FinancialRatiosTool()
 
     def get_name(self) -> str:
         return "stock_screener"
@@ -91,26 +79,11 @@ class StockScreenerTool(BaseTool):
         )
 
     async def run(self, symbol: str = "", action: str = "value", **kwargs) -> Dict[str, Any]:
-        """
-        Args:
-            symbol: Không bắt buộc (screener quét nhiều mã)
-            action:
-                - value: Lọc CP giá trị
-                - growth: Lọc CP tăng trưởng
-                - oversold: Lọc CP bị bán quá mức (RSI < threshold)
-                - overbought: Lọc CP bị mua quá mức (RSI > threshold)
-                - industry: Lọc theo ngành
-                - dividend: Lọc CP cổ tức cao
-                - custom: Bộ lọc tuỳ chỉnh
-            **kwargs:
-                universe: List[str] danh sách mã muốn scan
-                max_results: int (default 20)
-                rsi_threshold: float (default 30 cho oversold, 70 cho overbought)
-                industry: str (tên ngành)
-                criteria: Dict tiêu chí tuỳ chỉnh
-        """
+
         action_map = {
             "value": self._screen_value,
+            "value_stocks" : self._screen_value,
+            "growth_stocks": self._screen_growth,
             "growth": self._screen_growth,
             "oversold": self._screen_oversold,
             "overbought": self._screen_overbought,
@@ -129,9 +102,6 @@ class StockScreenerTool(BaseTool):
         except Exception as e:
             return {"success": False, "error": str(e)}
 
-    # ===================================================================
-    # Helpers
-    # ===================================================================
 
     def _safe(self, val: Any) -> Optional[float]:
         """Chuyển giá trị sang float an toàn."""
@@ -159,29 +129,99 @@ class StockScreenerTool(BaseTool):
                 flat[key] = val
         return flat
 
+    def _convert_ratio_data(self, data: Dict) -> Dict[str, Any]:
+        """Convert nested ratio data từ FinancialRatiosTool sang flat format."""
+        flat = {}
+        
+        # Valuation ratios
+        val = data.get("valuation", {})
+        flat["P/E"] = val.get("pe", {}).get("value")
+        flat["P/B"] = val.get("pb", {}).get("value")
+        flat["P/S"] = val.get("ps", {}).get("value")
+        flat["Vốn hóa (Tỷ đồng)"] = val.get("market_cap_billion", {}).get("value")
+        
+        # Profitability ratios
+        prof = data.get("profitability", {})
+        flat["ROE (%)"] = prof.get("roe", {}).get("value")
+        flat["ROA (%)"] = prof.get("roa", {}).get("value")
+        flat["ROIC (%)"] = prof.get("roic", {}).get("value")
+        flat["Biên lợi nhuận gộp (%)"] = prof.get("gross_margin", {}).get("value")
+        flat["Biên lợi nhuận ròng (%)"] = prof.get("net_margin", {}).get("value")
+        flat["Biên EBIT (%)"] = prof.get("ebit_margin", {}).get("value")
+        flat["Tỷ suất cổ tức (%)"] = prof.get("dividend_yield", {}).get("value")
+        
+        # Liquidity ratios
+        liq = data.get("liquidity", {})
+        flat["Chỉ số thanh toán hiện thời"] = liq.get("current_ratio", {}).get("value")
+        flat["Chỉ số thanh toán nhanh"] = liq.get("quick_ratio", {}).get("value")
+        flat["Chỉ số thanh toán tiền mặt"] = liq.get("cash_ratio", {}).get("value")
+        
+        # Leverage ratios
+        lev = data.get("leverage", {})
+        flat["Nợ/VCSH"] = lev.get("debt_equity", {}).get("value")
+        flat["Đòn bẩy tài chính"] = lev.get("financial_leverage", {}).get("value")
+        
+        # Per share ratios
+        ps = data.get("per_share", {})
+        flat["EPS (VND)"] = ps.get("eps", {}).get("value")
+        flat["BVPS (VND)"] = ps.get("bvps", {}).get("value")
+        
+        # Efficiency ratios
+        eff = data.get("efficiency", {})
+        flat["Vòng quay tài sản"] = eff.get("asset_turnover", {}).get("value")
+        flat["Vòng quay TSCĐ"] = eff.get("fixed_asset_turnover", {}).get("value")
+        
+        # Year
+        flat["Năm"] = data.get("year")
+        
+        return flat
+
     async def _get_universe(self, kwargs: Dict) -> List[str]:
         """Lấy danh sách mã cần scan."""
+        max_universe_size = kwargs.get("max_universe_size", 10)  # Giảm xuống 10 mã để tránh timeout
+        
         if "universe" in kwargs and kwargs["universe"]:
-            return kwargs["universe"]
-        return self.DEFAULT_UNIVERSE.copy()
+            universe = kwargs["universe"]
+        else:
+            universe = self.DEFAULT_UNIVERSE.copy()
+        
+        # Giới hạn số lượng mã để tránh timeout
+        limited_universe = universe[:max_universe_size]
+        logger.info(f"🎯 Sẽ quét {len(limited_universe)} mã cổ phiếu")
+        return limited_universe
 
-    async def _fetch_ratio_for_symbol(self, symbol: str) -> Optional[Dict[str, Any]]:
-        """Lấy ratio mới nhất cho 1 mã."""
+    async def _fetch_ratio_for_symbol(self, symbol: str, delay: float = 0.5) -> Optional[Dict[str, Any]]:
+        """Lấy ratio mới nhất cho 1 mã từ FinancialRatiosTool với delay để tránh rate limit."""
         try:
-            result = await self._data_tool.get_financial_ratio(symbol)
+            # Thêm delay nhỏ giữa các request để tránh rate limit
+            if delay > 0:
+                await asyncio.sleep(delay)
+            
+            result = await self._ratio_tool.run(action="all", symbol=symbol)
             if result.get("success") and result.get("data"):
-                return self._flatten_ratio(result["data"][0])
-        except Exception:
-            pass
+                logger.info(f"✓ Đã lấy dữ liệu tài chính cho {symbol}")
+                # Convert nested structure to flat structure
+                return self._convert_ratio_data(result["data"])
+            else:
+                logger.warning(f"✗ Không có dữ liệu tài chính cho {symbol}")
+        except asyncio.TimeoutError:
+            logger.warning(f"⏱ Timeout khi lấy dữ liệu {symbol}")
+        except Exception as e:
+            logger.warning(f"✗ Lỗi lấy dữ liệu {symbol}: {str(e)[:50]}")
         return None
 
-    async def _fetch_price_df(self, symbol: str, days: int = 100) -> Optional[pd.DataFrame]:
-        """Lấy lịch sử giá gần nhất."""
+    async def _fetch_price_df(self, symbol: str, days: int = 100, delay: float = 0.5) -> Optional[pd.DataFrame]:
+        """Lấy lịch sử giá gần nhất với delay để tránh rate limit."""
         try:
+            # Thêm delay nhỏ giữa các request
+            if delay > 0:
+                await asyncio.sleep(delay)
+            
             end = datetime.now().strftime("%Y-%m-%d")
             start = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
             result = await self._data_tool.get_stock_price(symbol, start=start, end=end)
             if not result.get("success"):
+                logger.warning(f"✗ Không lấy được giá cho {symbol}")
                 return None
             df = pd.DataFrame(result["data"])
             if df.empty:
@@ -190,9 +230,13 @@ class StockScreenerTool(BaseTool):
             df = df.rename(columns={k: v for k, v in col_map.items() if k in df.columns})
             df["date"] = pd.to_datetime(df["date"])
             df = df.sort_values("date").reset_index(drop=True)
+            logger.info(f"✓ Đã lấy lịch sử giá cho {symbol}")
             return df
-        except Exception:
-            return None
+        except asyncio.TimeoutError:
+            logger.warning(f"⏱ Timeout khi lấy giá {symbol}")
+        except Exception as e:
+            logger.warning(f"✗ Lỗi lấy giá {symbol}: {str(e)[:50]}")
+        return None
 
     async def _get_company_industry(self, symbol: str) -> Optional[str]:
         """Lấy ngành của cổ phiếu."""
@@ -210,21 +254,9 @@ class StockScreenerTool(BaseTool):
             pass
         return None
 
-    # ===================================================================
-    # 1. SCREEN VALUE STOCKS
-    # ===================================================================
 
     async def _screen_value(self, **kwargs) -> Dict[str, Any]:
-        """
-        Lọc cổ phiếu giá trị (Value Investing).
 
-        Tiêu chí mặc định:
-        - P/E < 15
-        - P/B < 1.5
-        - ROE > 15% (0.15)
-        - D/E < 1.0
-        - EPS > 0
-        """
         criteria = kwargs.get("criteria", {})
         max_pe = criteria.get("max_pe", 15)
         max_pb = criteria.get("max_pb", 1.5)
@@ -328,20 +360,9 @@ class StockScreenerTool(BaseTool):
 
         return min(int(score), 100)
 
-    # ===================================================================
-    # 2. SCREEN GROWTH STOCKS
-    # ===================================================================
 
     async def _screen_growth(self, **kwargs) -> Dict[str, Any]:
-        """
-        Lọc cổ phiếu tăng trưởng (Growth Investing).
 
-        Tiêu chí mặc định:
-        - Tăng trưởng doanh thu > 15%
-        - Tăng trưởng lợi nhuận > 15%
-        - ROE > 12%
-        - EPS > 0 và tăng trưởng
-        """
         criteria = kwargs.get("criteria", {})
         min_revenue_growth = criteria.get("min_revenue_growth", 0.15)
         min_profit_growth = criteria.get("min_profit_growth", 0.15)
@@ -355,8 +376,8 @@ class StockScreenerTool(BaseTool):
 
         for sym in universe:
             try:
-                # Lấy ratio với nhiều năm để so sánh
-                result = await self._data_tool.get_financial_ratio(sym)
+                # Lấy ratio với nhiều quý để so sánh
+                result = await self._ratio_tool.run(action="compare", symbol=sym, years=2)
                 if not result.get("success") or not result.get("data"):
                     errors += 1
                     continue
@@ -366,26 +387,23 @@ class StockScreenerTool(BaseTool):
                 if len(rows) < 2:
                     continue
 
-                latest = self._flatten_ratio(rows[0])
-                previous = self._flatten_ratio(rows[1])
+                latest = rows[0]
+                previous = rows[1]
 
-                roe = self._safe(latest.get("ROE (%)"))
-                eps_now = self._safe(latest.get("EPS (VND)"))
-                eps_prev = self._safe(previous.get("EPS (VND)"))
+                roe = self._safe(latest.get("roe"))
+                eps_now = self._safe(latest.get("eps"))
+                eps_prev = self._safe(previous.get("eps"))
 
-                # Tăng trưởng doanh thu
-                rev_now = self._safe(latest.get("Doanh thu thuần (Tỷ đồng)"))
-                rev_prev = self._safe(previous.get("Doanh thu thuần (Tỷ đồng)"))
-                rev_growth = None
-                if rev_now and rev_prev and rev_prev > 0:
-                    rev_growth = (rev_now - rev_prev) / abs(rev_prev)
+                # Tăng trưởng doanh thu - sử dụng gross_margin và net_margin thay vì revenue trực tiếp
+                # Do FinancialRatiosTool không cung cấp revenue trực tiếp, ta ước tính từ margins
+                rev_growth = None  # Sẽ bỏ qua tiêu chí này nếu không có data
 
-                # Tăng trưởng lợi nhuận
-                profit_now = self._safe(latest.get("LNST (Tỷ đồng)"))
-                profit_prev = self._safe(previous.get("LNST (Tỷ đồng)"))
+                # Tăng trưởng lợi nhuận - ước tính từ net_margin changes
+                margin_now = self._safe(latest.get("net_margin"))
+                margin_prev = self._safe(previous.get("net_margin"))
                 profit_growth = None
-                if profit_now and profit_prev and profit_prev > 0:
-                    profit_growth = (profit_now - profit_prev) / abs(profit_prev)
+                if margin_now and margin_prev and margin_prev > 0:
+                    profit_growth = (margin_now - margin_prev) / abs(margin_prev)
 
                 # Tăng trưởng EPS
                 eps_growth = None
@@ -481,10 +499,6 @@ class StockScreenerTool(BaseTool):
 
         return min(int(score), 100)
 
-    # ===================================================================
-    # 3. SCREEN OVERSOLD (RSI < threshold)
-    # ===================================================================
-
     async def _screen_oversold(self, **kwargs) -> Dict[str, Any]:
         """
         Lọc cổ phiếu bị bán quá mức (Oversold).
@@ -545,9 +559,6 @@ class StockScreenerTool(BaseTool):
             "results": matched,
         }
 
-    # ===================================================================
-    # 4. SCREEN OVERBOUGHT (RSI > threshold)
-    # ===================================================================
 
     async def _screen_overbought(self, **kwargs) -> Dict[str, Any]:
         """
@@ -607,18 +618,9 @@ class StockScreenerTool(BaseTool):
             "results": matched,
         }
 
-    # ===================================================================
-    # 5. SCREEN BY INDUSTRY
-    # ===================================================================
 
     async def _screen_industry(self, **kwargs) -> Dict[str, Any]:
-        """
-        Lọc cổ phiếu theo ngành kết hợp tiêu chí tài chính.
 
-        Args (qua kwargs):
-            industry: Tên ngành (ngan_hang, bat_dong_san, thep, ...)
-            criteria: Dict tiêu chí bổ sung (optional)
-        """
         industry = kwargs.get("industry", "")
         if not industry:
             return {
@@ -697,18 +699,9 @@ class StockScreenerTool(BaseTool):
             "results": matched,
         }
 
-    # ===================================================================
-    # 6. SCREEN DIVIDEND
-    # ===================================================================
 
     async def _screen_dividend(self, **kwargs) -> Dict[str, Any]:
-        """
-        Lọc cổ phiếu có cổ tức cao.
 
-        Tiêu chí:
-        - Dividend Yield > min_yield (mặc định 5%)
-        - Lợi nhuận dương (EPS > 0)
-        """
         criteria = kwargs.get("criteria", {})
         min_yield = criteria.get("min_yield", 0.05)
         max_results = kwargs.get("max_results", 20)
@@ -760,28 +753,9 @@ class StockScreenerTool(BaseTool):
             "results": matched,
         }
 
-    # ===================================================================
-    # 7. SCREEN CUSTOM (Bộ lọc tuỳ chỉnh)
-    # ===================================================================
 
     async def _screen_custom(self, **kwargs) -> Dict[str, Any]:
-        """
-        Bộ lọc tuỳ chỉnh.
 
-        Args (qua kwargs):
-            criteria: Dict tiêu chí
-                {
-                    "pe": {"min": 5, "max": 15},
-                    "pb": {"max": 2},
-                    "roe": {"min": 0.12},
-                    "de": {"max": 1.5},
-                    "eps": {"min": 1000},
-                    "rsi": {"min": 20, "max": 50},
-                    ...
-                }
-
-        Các key hỗ trợ: pe, pb, roe, de, eps, rsi, volume
-        """
         criteria = kwargs.get("criteria", {})
         if not criteria:
             return {

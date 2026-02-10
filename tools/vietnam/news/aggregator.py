@@ -1,11 +1,4 @@
-"""
-Module 5.1: News Aggregator
-Thu thập tin tức chứng khoán từ nhiều nguồn Việt Nam
 
-Theo CODING_ROADMAP.md - Module 5
-Nguồn: CafeF, VnExpress, Vietstock, BaoDauTu
-Tech: BeautifulSoup4 + requests
-"""
 from dexter_vietnam.tools.base import BaseTool
 from typing import Dict, Any, Optional, List
 from datetime import datetime, timedelta
@@ -69,13 +62,6 @@ NEWS_SOURCES = {
 
 
 class NewsAggregatorTool(BaseTool):
-    """
-    Thu thập tin tức chứng khoán từ nhiều nguồn:
-    - CafeF, VnExpress, Vietstock
-    - Tìm kiếm theo mã CP hoặc keyword
-    - RSS feeds
-    - Tin theo danh mục (thị trường, doanh nghiệp, vĩ mô)
-    """
 
     REQUEST_TIMEOUT = 15  # seconds
 
@@ -96,20 +82,7 @@ class NewsAggregatorTool(BaseTool):
         )
 
     async def run(self, symbol: str = "", action: str = "latest", **kwargs) -> Dict[str, Any]:
-        """
-        Args:
-            symbol: Mã cổ phiếu (tuỳ chọn)
-            action: Loại tin tức
-                - latest: Tin mới nhất (mặc định)
-                - search: Tìm kiếm theo keyword
-                - stock_news: Tin theo mã CP
-                - market: Tin thị trường chung
-                - rss: Lấy tin từ RSS feeds
-            **kwargs:
-                keyword: Từ khoá tìm kiếm
-                source: Nguồn tin (cafef, vnexpress, vietstock, all)
-                limit: Số tin trả về (mặc định 10)
-        """
+
         action_map = {
             "latest": self._get_latest_news,
             "search": self._search_news,
@@ -124,9 +97,6 @@ class NewsAggregatorTool(BaseTool):
         except Exception as e:
             return {"success": False, "error": str(e)}
 
-    # ===================================================================
-    # Helpers
-    # ===================================================================
 
     def _fetch_html(self, url: str) -> Optional[BeautifulSoup]:
         """Lấy HTML từ URL và parse bằng BeautifulSoup."""
@@ -173,9 +143,6 @@ class NewsAggregatorTool(BaseTool):
                 return match.group(1)
         return text.strip()[:20] if text else None
 
-    # ===================================================================
-    # 1. LATEST NEWS (Tin mới nhất)
-    # ===================================================================
 
     async def _get_latest_news(self, symbol: str = "", **kwargs) -> Dict[str, Any]:
         """Lấy tin mới nhất từ tất cả nguồn."""
@@ -332,9 +299,6 @@ class NewsAggregatorTool(BaseTool):
 
         return news
 
-    # ===================================================================
-    # 2. SEARCH NEWS (Tìm kiếm)
-    # ===================================================================
 
     async def _search_news(self, symbol: str = "", **kwargs) -> Dict[str, Any]:
         """Tìm kiếm tin tức theo keyword."""
@@ -460,9 +424,6 @@ class NewsAggregatorTool(BaseTool):
 
         return news
 
-    # ===================================================================
-    # 3. STOCK NEWS (Tin theo mã CP)
-    # ===================================================================
 
     async def _get_stock_news(self, symbol: str, **kwargs) -> Dict[str, Any]:
         """Lấy tin tức liên quan đến 1 mã cổ phiếu."""
@@ -537,9 +498,6 @@ class NewsAggregatorTool(BaseTool):
 
         return news
 
-    # ===================================================================
-    # 4. MARKET NEWS (Tin thị trường)
-    # ===================================================================
 
     async def _get_market_news(self, symbol: str = "", **kwargs) -> Dict[str, Any]:
         """Lấy tin thị trường chung (vĩ mô, nhận định, phân tích)."""
@@ -600,9 +558,6 @@ class NewsAggregatorTool(BaseTool):
             "data": unique,
         }
 
-    # ===================================================================
-    # 5. RSS NEWS
-    # ===================================================================
 
     async def _get_rss_news(self, symbol: str = "", **kwargs) -> Dict[str, Any]:
         """Lấy tin từ RSS feeds (nhanh, ổn định hơn crawl HTML)."""
@@ -676,9 +631,6 @@ class NewsAggregatorTool(BaseTool):
             "data": all_news,
         }
 
-    # ===================================================================
-    # Public helper: lấy nội dung bài viết
-    # ===================================================================
 
     async def get_article_content(self, url: str) -> Dict[str, Any]:
         """

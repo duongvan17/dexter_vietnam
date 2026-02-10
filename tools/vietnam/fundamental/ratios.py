@@ -1,9 +1,4 @@
-"""
-Module 2.2: Financial Ratios Calculator
-Tính toán các chỉ số tài chính cho cổ phiếu Việt Nam
 
-Theo CODING_ROADMAP.md - Module 2
-"""
 from dexter_vietnam.tools.base import BaseTool
 from dexter_vietnam.tools.vietnam.data.vnstock_connector import VnstockTool
 from dexter_vietnam.tools.vietnam.fundamental.financial_statements import FinancialStatementsTool
@@ -12,14 +7,6 @@ import math
 
 
 class FinancialRatiosTool(BaseTool):
-    """
-    Tính toán và phân tích chỉ số tài chính:
-    - Định giá: P/E, P/B, P/S, EV/EBITDA
-    - Sinh lời: ROE, ROA, ROIC, Gross/Net Margin
-    - Thanh toán: Current Ratio, Quick Ratio
-    - Đòn bẩy: Debt/Equity, Interest Coverage
-    - Mỗi cổ phiếu: EPS, BVPS
-    """
 
     # Ngưỡng đánh giá chỉ số
     THRESHOLDS = {
@@ -47,18 +34,7 @@ class FinancialRatiosTool(BaseTool):
         )
 
     async def run(self, action: str = "all", symbol: str = "", **kwargs) -> Dict[str, Any]:
-        """
-        Args:
-            action: Hành động
-                - all: Tất cả chỉ số + đánh giá (mặc định)
-                - valuation: Chỉ số định giá (P/E, P/B, P/S, EV/EBITDA)
-                - profitability: Chỉ số sinh lời (ROE, ROA, Margins)
-                - liquidity: Chỉ số thanh khoản (Current, Quick Ratio)
-                - leverage: Chỉ số đòn bẩy (D/E, Interest Coverage)
-                - per_share: Chỉ số trên mỗi CP (EPS, BVPS)
-                - compare: So sánh với năm trước
-            symbol: Mã cổ phiếu
-        """
+
         action_map = {
             'all': self.get_all_ratios,
             'valuation': self.get_valuation_ratios,
@@ -77,11 +53,8 @@ class FinancialRatiosTool(BaseTool):
         except Exception as e:
             return {"success": False, "error": str(e)}
 
-    # ===================================================================
-    # Helpers
-    # ===================================================================
 
-    async def _fetch_ratios(self, symbol: str, period: str = 'year') -> List[Dict]:
+    async def _fetch_ratios(self, symbol: str, period: str = 'quarter') -> List[Dict]:
         """Lấy raw ratios từ vnstock (đã có MultiIndex)."""
         result = await self._data_tool.get_financial_ratio(symbol, period)
         if not result.get("success"):
@@ -136,9 +109,6 @@ class FinancialRatiosTool(BaseTool):
             else:
                 return f"Thấp (<{thresholds[keys[1]]})"
 
-    # ===================================================================
-    # 1. ALL RATIOS (Tổng hợp)
-    # ===================================================================
 
     async def get_all_ratios(self, symbol: str, **_) -> Dict[str, Any]:
         """Trả về tất cả chỉ số + đánh giá cho năm gần nhất."""
@@ -203,9 +173,6 @@ class FinancialRatiosTool(BaseTool):
             "data": ratios,
         }
 
-    # ===================================================================
-    # 2-5. Ratios theo nhóm
-    # ===================================================================
 
     async def get_valuation_ratios(self, symbol: str, **_) -> Dict[str, Any]:
         result = await self.get_all_ratios(symbol)
@@ -267,9 +234,6 @@ class FinancialRatiosTool(BaseTool):
             "year": result["data"]["year"],
         }
 
-    # ===================================================================
-    # 6. RATIO COMPARISON (So sánh YoY)
-    # ===================================================================
 
     async def get_ratio_comparison(
         self, symbol: str, years: int = 3, **_
@@ -320,21 +284,11 @@ class FinancialRatiosTool(BaseTool):
             "trends": trends,
         }
 
-    # ===================================================================
-    # 7. MANUAL CALCULATION (Tự tính từ BCTC)
-    # ===================================================================
 
     async def calculate_from_statements(
         self, symbol: str, market_price: Optional[float] = None, **_
     ) -> Dict[str, Any]:
-        """
-        Tự tính chỉ số từ báo cáo tài chính (không dùng ratio() API).
-        Hữu ích khi vnstock ratio API thiếu dữ liệu.
-
-        Args:
-            symbol: Mã cổ phiếu
-            market_price: Giá thị trường hiện tại (đồng), nếu None sẽ tự lấy
-        """
+ 
         # Lấy BCTC
         summary = await self._fs_tool.get_financial_summary(symbol)
         if not summary.get("success"):

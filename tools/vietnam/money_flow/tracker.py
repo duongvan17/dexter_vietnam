@@ -1,10 +1,4 @@
-"""
-Module 4: Dòng Tiền (Money Flow)
-Theo dõi giao dịch khối ngoại, tự doanh, nội bộ
 
-Theo CODING_ROADMAP.md - Module 4
-Data source: vnstock stock.trading.price_depth() & các API liên quan
-"""
 from dexter_vietnam.tools.base import BaseTool
 from dexter_vietnam.tools.vietnam.data.vnstock_connector import VnstockTool
 from typing import Dict, Any, Optional, List
@@ -14,14 +8,6 @@ import pandas as pd
 
 
 class MoneyFlowTool(BaseTool):
-    """
-    Theo dõi dòng tiền:
-    - Giao dịch khối ngoại (mua/bán ròng)
-    - Top mã khối ngoại mua/bán ròng
-    - Giao dịch tự doanh (CTCK)
-    - Giao dịch nội bộ (cổ đông lớn, ban lãnh đạo)
-    - Phân tích dòng tiền theo thời gian
-    """
 
     def __init__(self):
         self._data_tool = VnstockTool()
@@ -36,21 +22,7 @@ class MoneyFlowTool(BaseTool):
         )
 
     async def run(self, symbol: str = "", action: str = "foreign", **kwargs) -> Dict[str, Any]:
-        """
-        Args:
-            symbol: Mã cổ phiếu (bắt buộc với một số action)
-            action: Loại phân tích
-                - foreign: Giao dịch khối ngoại 1 mã
-                - foreign_history: Lịch sử mua/bán ròng khối ngoại
-                - top_foreign_buy: Top mã khối ngoại mua ròng
-                - top_foreign_sell: Top mã khối ngoại bán ròng
-                - proprietary: Giao dịch tự doanh
-                - insider: Giao dịch nội bộ
-                - flow_analysis: Phân tích dòng tiền tổng hợp
-            **kwargs:
-                start / end: Khoảng thời gian
-                top_n: Số mã trả về (mặc định 10)
-        """
+
         action_map = {
             "foreign": self._get_foreign_trading,
             "foreign_history": self._get_foreign_history,
@@ -59,17 +31,15 @@ class MoneyFlowTool(BaseTool):
             "proprietary": self._get_proprietary_trading,
             "insider": self._get_insider_trading,
             "flow_analysis": self._get_flow_analysis,
+            "analyze": self._get_flow_analysis,  # Alias for flow_analysis
         }
         if action not in action_map:
-            return {"success": False, "error": f"Action không hợp lệ: {action}"}
+            return {"success": False, "error": f"Action không hợp lệ: {action}. Dùng: {list(action_map.keys())}"}
         try:
             return await action_map[action](symbol, **kwargs)
         except Exception as e:
             return {"success": False, "error": str(e)}
 
-    # ===================================================================
-    # Helpers
-    # ===================================================================
 
     def _safe_round(self, val: Any, decimals: int = 2) -> Any:
         if val is None or (isinstance(val, float) and (math.isnan(val) or math.isinf(val))):
@@ -105,15 +75,9 @@ class MoneyFlowTool(BaseTool):
         df = df.sort_values("date").reset_index(drop=True)
         return df
 
-    # ===================================================================
-    # 1. FOREIGN TRADING (Khối ngoại - 1 mã)
-    # ===================================================================
 
     async def _get_foreign_trading(self, symbol: str, **kwargs) -> Dict[str, Any]:
-        """
-        Lấy dữ liệu giao dịch khối ngoại cho 1 mã cổ phiếu.
-        Sử dụng vnstock stock.trading.price_depth()
-        """
+
         if not symbol:
             return {"success": False, "error": "Cần cung cấp mã cổ phiếu (symbol)"}
 
@@ -194,9 +158,6 @@ class MoneyFlowTool(BaseTool):
         summary["available_columns"] = list(sample.keys())
         return summary
 
-    # ===================================================================
-    # 2. FOREIGN HISTORY (Lịch sử khối ngoại)
-    # ===================================================================
 
     async def _get_foreign_history(self, symbol: str, **kwargs) -> Dict[str, Any]:
         """
@@ -286,9 +247,6 @@ class MoneyFlowTool(BaseTool):
             "foreign_raw": foreign_data,
         }
 
-    # ===================================================================
-    # 3. TOP FOREIGN BUYING (Top mua ròng khối ngoại)
-    # ===================================================================
 
     async def _get_top_foreign_buying(self, symbol: str = "", **kwargs) -> Dict[str, Any]:
         """
@@ -330,9 +288,6 @@ class MoneyFlowTool(BaseTool):
             "note": "Dựa trên dữ liệu giao dịch gần nhất từ vnstock",
         }
 
-    # ===================================================================
-    # 4. TOP FOREIGN SELLING (Top bán ròng khối ngoại)
-    # ===================================================================
 
     async def _get_top_foreign_selling(self, symbol: str = "", **kwargs) -> Dict[str, Any]:
         """Top N mã cổ phiếu khối ngoại bán ròng nhiều nhất."""
@@ -410,9 +365,6 @@ class MoneyFlowTool(BaseTool):
             "net_value": 0,
         }
 
-    # ===================================================================
-    # 5. PROPRIETARY TRADING (Tự doanh CTCK)
-    # ===================================================================
 
     async def _get_proprietary_trading(self, symbol: str, **kwargs) -> Dict[str, Any]:
         """
@@ -497,9 +449,6 @@ class MoneyFlowTool(BaseTool):
             "total_detected": len(inst_list),
         }
 
-    # ===================================================================
-    # 6. INSIDER TRADING (Giao dịch nội bộ)
-    # ===================================================================
 
     async def _get_insider_trading(self, symbol: str, **kwargs) -> Dict[str, Any]:
         """
@@ -604,9 +553,6 @@ class MoneyFlowTool(BaseTool):
             "sentiment": sentiment,
         }
 
-    # ===================================================================
-    # 7. FLOW ANALYSIS (Phân tích dòng tiền tổng hợp)
-    # ===================================================================
 
     async def _get_flow_analysis(self, symbol: str, **kwargs) -> Dict[str, Any]:
         """

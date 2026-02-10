@@ -1,11 +1,4 @@
-"""
-Module 10: Market Overview (Tổng quan thị trường)
 
-Theo CODING_ROADMAP.md - Module 10:
-- get_market_status: VNINDEX, HNX, UPCOM status + top gainers/losers
-- get_sector_performance: Hiệu suất theo ngành
-- get_macro_indicators: Lãi suất, lạm phát, GDP
-"""
 from dexter_vietnam.tools.base import BaseTool
 from dexter_vietnam.tools.vietnam.data.vnstock_connector import VnstockTool
 from typing import Dict, Any, Optional, List
@@ -22,14 +15,6 @@ except ImportError:
 
 
 class MarketOverviewTool(BaseTool):
-    """
-    Tổng quan thị trường chứng khoán Việt Nam:
-    - Trạng thái VNINDEX / HNX / UPCOM
-    - Top tăng / giảm mạnh nhất
-    - Hiệu suất ngành (Banking, BĐS, Thép, ...)
-    - Chỉ số vĩ mô (lãi suất, lạm phát, GDP)
-    - Breadth (độ rộng thị trường)
-    """
 
     # Đại diện mỗi ngành → để tính hiệu suất sector
     SECTOR_REPRESENTATIVES = {
@@ -86,20 +71,7 @@ class MarketOverviewTool(BaseTool):
         )
 
     async def run(self, symbol: str = "", action: str = "status", **kwargs) -> Dict[str, Any]:
-        """
-        Args:
-            symbol: Không bắt buộc
-            action:
-                - status: Tổng quan VNINDEX/HNX/UPCOM + top gainers/losers
-                - index: Chi tiết 1 chỉ số (VNINDEX, HNX, UPCOM)
-                - sector: Hiệu suất theo ngành
-                - macro: Chỉ số vĩ mô
-                - breadth: Độ rộng thị trường
-                - summary: Tổng hợp tất cả
-            **kwargs:
-                period: 1d, 5d, 1m, 3m, 6m, 1y
-                top_n: Số lượng top gainers/losers (default 10)
-        """
+ 
         action_map = {
             "status": self._market_status,
             "index": self._index_detail,
@@ -119,9 +91,6 @@ class MarketOverviewTool(BaseTool):
         except Exception as e:
             return {"success": False, "error": str(e)}
 
-    # ===================================================================
-    # Helpers
-    # ===================================================================
 
     def _r(self, val: Any, decimals: int = 2) -> Any:
         if val is None:
@@ -225,9 +194,6 @@ class MarketOverviewTool(BaseTool):
         except Exception:
             return None
 
-    # ===================================================================
-    # 1. MARKET STATUS
-    # ===================================================================
 
     async def _market_status(self, **kwargs) -> Dict[str, Any]:
         """
@@ -294,9 +260,6 @@ class MarketOverviewTool(BaseTool):
             "top_losers": losers,
         }
 
-    # ===================================================================
-    # 2. INDEX DETAIL
-    # ===================================================================
 
     async def _index_detail(self, **kwargs) -> Dict[str, Any]:
         """
@@ -385,9 +348,6 @@ class MarketOverviewTool(BaseTool):
             },
         }
 
-    # ===================================================================
-    # 3. SECTOR PERFORMANCE
-    # ===================================================================
 
     async def _sector_performance(self, **kwargs) -> Dict[str, Any]:
         """
@@ -467,9 +427,6 @@ class MarketOverviewTool(BaseTool):
             "bottom_sectors": [r["sector"] for r in ranking[-3:]],
         }
 
-    # ===================================================================
-    # 4. MACRO INDICATORS
-    # ===================================================================
 
     async def _macro_indicators(self, **kwargs) -> Dict[str, Any]:
         """
@@ -586,9 +543,6 @@ class MarketOverviewTool(BaseTool):
 
         return result
 
-    # ===================================================================
-    # 5. MARKET BREADTH
-    # ===================================================================
 
     async def _market_breadth(self, **kwargs) -> Dict[str, Any]:
         """
@@ -653,9 +607,6 @@ class MarketOverviewTool(BaseTool):
             "top_volume": sorted(stocks, key=lambda x: x.get("volume", 0), reverse=True)[:5],
         }
 
-    # ===================================================================
-    # 6. MARKET SUMMARY (Tổng hợp)
-    # ===================================================================
 
     async def _market_summary(self, **kwargs) -> Dict[str, Any]:
         """

@@ -96,13 +96,6 @@ def register_all_tools(registry: Optional[ToolRegistry] = None) -> ToolRegistry:
     except Exception as e:
         tools_failed.append(("financial_ratios", str(e)))
 
-    try:
-        from .vietnam.fundamental.dcf_valuation import DCFValuationTool
-        registry.register(DCFValuationTool())
-        tools_registered.append("dcf_valuation")
-    except Exception as e:
-        tools_failed.append(("dcf_valuation", str(e)))
-
     # --- Module 3: Technical ---
     try:
         from .vietnam.technical.indicators import TechnicalIndicatorsTool
@@ -188,22 +181,6 @@ def register_all_tools(registry: Optional[ToolRegistry] = None) -> ToolRegistry:
         tools_registered.append("calculators")
     except Exception as e:
         tools_failed.append(("calculators", str(e)))
-
-    # --- Module 14: Education ---
-    try:
-        from .vietnam.education.knowledge import EducationTool
-        registry.register(EducationTool())
-        tools_registered.append("education")
-    except Exception as e:
-        tools_failed.append(("education", str(e)))
-
-    # --- Module 15: Social ---
-    try:
-        from .vietnam.social.community import SocialTool
-        registry.register(SocialTool())
-        tools_registered.append("social")
-    except Exception as e:
-        tools_failed.append(("social", str(e)))
 
     logger.info(f"Registered {len(tools_registered)} tools: {tools_registered}")
     if tools_failed:

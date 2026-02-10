@@ -1,9 +1,4 @@
-"""
-Module 6: Quản lý Rủi ro (Risk Management)
-Đánh giá rủi ro công ty, thanh khoản, danh mục
 
-Theo CODING_ROADMAP.md - Module 6
-"""
 from dexter_vietnam.tools.base import BaseTool
 from dexter_vietnam.tools.vietnam.data.vnstock_connector import VnstockTool
 from dexter_vietnam.tools.vietnam.fundamental.financial_statements import FinancialStatementsTool
@@ -14,14 +9,6 @@ import pandas as pd
 
 
 class CompanyRiskTool(BaseTool):
-    """
-    Đánh giá rủi ro:
-    - Altman Z-Score (dự đoán phá sản)
-    - Rủi ro thanh khoản (Current / Quick Ratio)
-    - Rủi ro danh mục (Portfolio Risk)
-    - Rủi ro biến động (Volatility / Beta)
-    - Đánh giá tổng hợp rủi ro công ty
-    """
 
     def __init__(self):
         self._data_tool = VnstockTool()
@@ -37,21 +24,12 @@ class CompanyRiskTool(BaseTool):
         )
 
     async def run(self, symbol: str = "", action: str = "assessment", **kwargs) -> Dict[str, Any]:
-        """
-        Args:
-            symbol: Mã cổ phiếu
-            action: Loại đánh giá
-                - assessment: Đánh giá rủi ro tổng hợp (mặc định)
-                - altman_z: Altman Z-Score
-                - liquidity: Rủi ro thanh khoản
-                - volatility: Rủi ro biến động
-                - portfolio: Rủi ro danh mục
-            **kwargs:
-                holdings: List[Dict] cho portfolio risk
-                    [{"symbol": "VNM", "weight": 0.3}, ...]
-        """
+
         action_map = {
             "assessment": self._overall_assessment,
+            "analyze": self._overall_assessment,  # Alias cho assessment
+            "evaluate": self._overall_assessment,  # Alias: đánh giá rủi ro
+            "all": self._overall_assessment,  # Alias: đánh giá tổng hợp tất cả
             "altman_z": self._altman_z_score,
             "liquidity": self._liquidity_risk,
             "volatility": self._volatility_risk,
@@ -64,9 +42,6 @@ class CompanyRiskTool(BaseTool):
         except Exception as e:
             return {"success": False, "error": str(e)}
 
-    # ===================================================================
-    # Helpers
-    # ===================================================================
 
     def _safe_round(self, val: Any, decimals: int = 4) -> Any:
         if val is None or (isinstance(val, float) and (math.isnan(val) or math.isinf(val))):
@@ -106,27 +81,9 @@ class CompanyRiskTool(BaseTool):
         df = df.sort_values("date").reset_index(drop=True)
         return df
 
-    # ===================================================================
-    # 1. ALTMAN Z-SCORE
-    # ===================================================================
 
     async def _altman_z_score(self, symbol: str, **kwargs) -> Dict[str, Any]:
-        """
-        Altman Z-Score — Mô hình dự đoán phá sản (1968).
 
-        Z = 1.2*X1 + 1.4*X2 + 3.3*X3 + 0.6*X4 + 1.0*X5
-
-        X1 = Working Capital / Total Assets
-        X2 = Retained Earnings / Total Assets
-        X3 = EBIT / Total Assets
-        X4 = Market Cap / Total Liabilities
-        X5 = Revenue / Total Assets
-
-        Đánh giá:
-        - Z > 2.99: An toàn (Safe Zone)
-        - 1.81 ≤ Z ≤ 2.99: Cảnh báo (Grey Zone)
-        - Z < 1.81: Nguy hiểm (Distress Zone)
-        """
         if not symbol:
             return {"success": False, "error": "Cần cung cấp mã cổ phiếu (symbol)"}
 
@@ -215,19 +172,9 @@ class CompanyRiskTool(BaseTool):
                     "Kết quả mang tính tham khảo.",
         }
 
-    # ===================================================================
-    # 2. LIQUIDITY RISK
-    # ===================================================================
 
     async def _liquidity_risk(self, symbol: str, **kwargs) -> Dict[str, Any]:
-        """
-        Đánh giá rủi ro thanh khoản:
-        - Current Ratio (khả năng thanh toán ngắn hạn)
-        - Quick Ratio (thanh toán nhanh)
-        - Cash Ratio (thanh toán tiền mặt)
-        - Interest Coverage (khả năng trả lãi vay)
-        - Volume Liquidity (thanh khoản giao dịch)
-        """
+
         if not symbol:
             return {"success": False, "error": "Cần cung cấp mã cổ phiếu (symbol)"}
 
@@ -364,19 +311,9 @@ class CompanyRiskTool(BaseTool):
         except Exception:
             return {"assessment": "Không có dữ liệu volume"}
 
-    # ===================================================================
-    # 3. VOLATILITY RISK
-    # ===================================================================
 
     async def _volatility_risk(self, symbol: str, **kwargs) -> Dict[str, Any]:
-        """
-        Đánh giá rủi ro biến động:
-        - Daily Volatility (độ lệch chuẩn daily returns)
-        - Annualized Volatility
-        - Beta (so với VNINDEX)
-        - Maximum Drawdown (mức giảm tối đa)
-        - Value at Risk (VaR 95%)
-        """
+
         if not symbol:
             return {"success": False, "error": "Cần cung cấp mã cổ phiếu (symbol)"}
 
@@ -534,24 +471,9 @@ class CompanyRiskTool(BaseTool):
         except Exception as e:
             return {"value": None, "assessment": f"Lỗi tính Beta: {str(e)}"}
 
-    # ===================================================================
-    # 4. PORTFOLIO RISK
-    # ===================================================================
 
     async def _portfolio_risk(self, symbol: str = "", **kwargs) -> Dict[str, Any]:
-        """
-        Đánh giá rủi ro danh mục đầu tư.
 
-        Args (qua kwargs):
-            holdings: Danh sách nắm giữ
-                [{"symbol": "VNM", "weight": 0.3}, {"symbol": "FPT", "weight": 0.4}, ...]
-
-        Tính:
-        - Portfolio Volatility (có tính correlation)
-        - Sharpe Ratio danh mục
-        - Mức độ tập trung (Concentration)
-        - Đánh giá diversification
-        """
         holdings = kwargs.get("holdings", [])
         if not holdings:
             return {"success": False, "error": "Cần cung cấp danh mục: holdings=[{symbol, weight}, ...]"}
@@ -683,18 +605,9 @@ class CompanyRiskTool(BaseTool):
             "overall": risk_label,
         }
 
-    # ===================================================================
-    # 5. OVERALL ASSESSMENT (Đánh giá tổng hợp)
-    # ===================================================================
 
     async def _overall_assessment(self, symbol: str, **kwargs) -> Dict[str, Any]:
-        """
-        Đánh giá rủi ro tổng hợp cho 1 mã:
-        - Altman Z-Score
-        - Rủi ro thanh khoản
-        - Rủi ro biến động
-        → Chấm điểm & xếp hạng rủi ro
-        """
+
         if not symbol:
             return {"success": False, "error": "Cần cung cấp mã cổ phiếu (symbol)"}
 

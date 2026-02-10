@@ -1,10 +1,4 @@
-"""
-Module 5.2: Sentiment Analysis
-Phân tích tâm lý tin tức bằng LLM
 
-Theo CODING_ROADMAP.md - Module 5
-Return: {sentiment: positive/negative/neutral, score: 0-1, reasoning: string}
-"""
 from dexter_vietnam.tools.base import BaseTool
 from dexter_vietnam.tools.vietnam.news.aggregator import NewsAggregatorTool
 from typing import Dict, Any, Optional, List
@@ -13,10 +7,6 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-
-# =====================================================================
-# Keyword-based sentiment (fallback khi không có LLM)
-# =====================================================================
 
 POSITIVE_KEYWORDS = [
     # Xu hướng tăng
@@ -46,19 +36,9 @@ NEGATIVE_KEYWORDS = [
 
 
 class SentimentAnalysisTool(BaseTool):
-    """
-    Phân tích tâm lý tin tức chứng khoán:
-    - Dùng LLM (OpenAI/Anthropic/Gemini) nếu có API key
-    - Fallback: keyword-based sentiment analysis
-    - Hỗ trợ phân tích 1 bài hoặc batch tin tức
-    """
 
     def __init__(self, llm=None):
-        """
-        Args:
-            llm: LLMWrapper instance (optional).
-                 Nếu None, dùng keyword-based fallback.
-        """
+
         self._llm = llm
         self._news_tool = NewsAggregatorTool()
 
@@ -72,20 +52,7 @@ class SentimentAnalysisTool(BaseTool):
         )
 
     async def run(self, symbol: str = "", action: str = "analyze", **kwargs) -> Dict[str, Any]:
-        """
-        Args:
-            symbol: Mã cổ phiếu
-            action: Loại phân tích
-                - analyze: Phân tích sentiment từ URL bài viết
-                - analyze_text: Phân tích sentiment từ text có sẵn
-                - stock_sentiment: Lấy tin + phân tích sentiment cho 1 mã CP
-                - market_sentiment: Tâm lý thị trường chung
-            **kwargs:
-                url: URL bài viết (cho action=analyze)
-                text: Nội dung text (cho action=analyze_text)
-                title: Tiêu đề bài viết
-                limit: Số tin phân tích (mặc định 5)
-        """
+ 
         action_map = {
             "analyze": self._analyze_article,
             "analyze_text": self._analyze_text,
@@ -99,17 +66,24 @@ class SentimentAnalysisTool(BaseTool):
         except Exception as e:
             return {"success": False, "error": str(e)}
 
-    # ===================================================================
-    # 1. ANALYZE ARTICLE (Phân tích 1 bài viết từ URL)
-    # ===================================================================
 
     async def _analyze_article(self, symbol: str = "", **kwargs) -> Dict[str, Any]:
-        """Lấy nội dung bài viết rồi phân tích sentiment."""
+        """
+        Phân tích sentiment của bài viết.
+        - Nếu có URL: phân tích bài viết đó
+        - Nếu không có URL nhưng có symbol: tự động lấy tin và phân tích sentiment tổng hợp
+        """
         url = kwargs.get("url", "")
+        
+        # Nếu không có URL nhưng có symbol → chuyển sang stock_sentiment
         if not url:
-            return {"success": False, "error": "Cần cung cấp URL bài viết"}
+            if symbol:
+                logger.info(f"No URL provided, auto-switching to stock_sentiment for {symbol}")
+                return await self._stock_sentiment(symbol, **kwargs)
+            else:
+                return {"success": False, "error": "Cần cung cấp URL bài viết hoặc mã cổ phiếu (symbol)"}
 
-        # Lấy nội dung bài viết
+        # Lấy nội dung bài viết từ URL
         article = await self._news_tool.get_article_content(url)
         if not article.get("success"):
             return article
@@ -129,9 +103,6 @@ class SentimentAnalysisTool(BaseTool):
             "sentiment": result,
         }
 
-    # ===================================================================
-    # 2. ANALYZE TEXT (Phân tích text có sẵn)
-    # ===================================================================
 
     async def _analyze_text(self, symbol: str = "", **kwargs) -> Dict[str, Any]:
         """Phân tích sentiment từ text trực tiếp."""
@@ -151,9 +122,6 @@ class SentimentAnalysisTool(BaseTool):
             "sentiment": result,
         }
 
-    # ===================================================================
-    # 3. STOCK SENTIMENT (Tâm lý về 1 mã CP)
-    # ===================================================================
 
     async def _stock_sentiment(self, symbol: str, **kwargs) -> Dict[str, Any]:
         """Lấy tin + phân tích sentiment tổng hợp cho 1 mã."""
@@ -161,11 +129,21 @@ class SentimentAnalysisTool(BaseTool):
             return {"success": False, "error": "Cần cung cấp mã cổ phiếu (symbol)"}
 
         limit = kwargs.get("limit", 5)
+        source = kwargs.get("source", "all")  # cafef, vnexpress, all
+        use_rss = kwargs.get("use_rss", False)  # True: dùng RSS, False: dùng crawl
 
-        # Lấy tin liên quan
-        news_result = await self._news_tool.run(
-            symbol=symbol, action="stock_news", limit=limit
-        )
+        # Lấy tin liên quan - chọn phương thức
+        if use_rss:
+            # Sử dụng RSS feed (nhanh, ổn định)
+            news_result = await self._news_tool.run(
+                symbol=symbol, action="rss", limit=limit, source=source
+            )
+        else:
+            # Sử dụng crawl HTML (mặc định, chi tiết hơn)
+            news_result = await self._news_tool.run(
+                symbol=symbol, action="stock_news", limit=limit, source=source
+            )
+        
         if not news_result.get("success"):
             return news_result
 
@@ -175,6 +153,7 @@ class SentimentAnalysisTool(BaseTool):
                 "success": True,
                 "symbol": symbol.upper(),
                 "report": "stock_sentiment",
+                "source_method": "rss" if use_rss else "crawl",
                 "data": [],
                 "overall": {"sentiment": "neutral", "score": 0.5, "reasoning": "Không tìm thấy tin tức"},
             }
@@ -199,21 +178,31 @@ class SentimentAnalysisTool(BaseTool):
             "success": True,
             "symbol": symbol.upper(),
             "report": "stock_sentiment",
+            "source_method": "rss" if use_rss else "crawl",
             "articles_analyzed": len(sentiments),
             "data": sentiments,
             "overall": overall,
         }
 
-    # ===================================================================
-    # 4. MARKET SENTIMENT (Tâm lý thị trường)
-    # ===================================================================
 
     async def _market_sentiment(self, symbol: str = "", **kwargs) -> Dict[str, Any]:
         """Phân tích tâm lý thị trường chung dựa trên tin tức."""
         limit = kwargs.get("limit", 10)
+        source = kwargs.get("source", "all")  # cafef, vnexpress, all
+        use_rss = kwargs.get("use_rss", False)  # True: dùng RSS, False: dùng crawl
 
-        # Lấy tin thị trường
-        news_result = await self._news_tool.run(action="market", limit=limit)
+        # Lấy tin thị trường - chọn phương thức
+        if use_rss:
+            # Sử dụng RSS feed (nhanh, ổn định)
+            news_result = await self._news_tool.run(
+                action="rss", limit=limit, source=source
+            )
+        else:
+            # Sử dụng crawl HTML (mặc định, chi tiết hơn)
+            news_result = await self._news_tool.run(
+                action="market", limit=limit, source=source
+            )
+        
         if not news_result.get("success"):
             return news_result
 
@@ -222,6 +211,7 @@ class SentimentAnalysisTool(BaseTool):
             return {
                 "success": True,
                 "report": "market_sentiment",
+                "source_method": "rss" if use_rss else "crawl",
                 "data": [],
                 "overall": {"sentiment": "neutral", "score": 0.5, "reasoning": "Không có tin tức"},
             }
@@ -243,29 +233,16 @@ class SentimentAnalysisTool(BaseTool):
         return {
             "success": True,
             "report": "market_sentiment",
+            "source_method": "rss" if use_rss else "crawl",
             "articles_analyzed": len(sentiments),
             "data": sentiments,
             "overall": overall,
         }
 
-    # ===================================================================
-    # Core sentiment analysis
-    # ===================================================================
+
 
     async def _do_sentiment(self, text: str, title: str = "") -> Dict[str, Any]:
-        """
-        Phân tích sentiment:
-        1. Thử dùng LLM nếu có
-        2. Fallback: keyword-based
 
-        Returns:
-            {
-                "sentiment": "positive" | "negative" | "neutral",
-                "score": float (0=rất tiêu cực, 0.5=trung tính, 1=rất tích cực),
-                "reasoning": str,
-                "method": "llm" | "keyword"
-            }
-        """
         # Thử LLM trước
         if self._llm is not None:
             try:
@@ -300,10 +277,7 @@ Chỉ trả về JSON, không thêm gì khác."""
         raise ValueError("LLM không trả về format đúng")
 
     def _keyword_sentiment(self, text: str) -> Dict[str, Any]:
-        """
-        Phân tích sentiment bằng keyword matching.
-        Đếm số keyword positive vs negative xuất hiện trong text.
-        """
+ 
         text_lower = text.lower()
 
         pos_count = 0
@@ -372,9 +346,6 @@ Chỉ trả về JSON, không thêm gì khác."""
             },
         }
 
-    # ===================================================================
-    # Overall sentiment aggregation
-    # ===================================================================
 
     def _compute_overall_sentiment(self, sentiments: List[Dict]) -> Dict[str, Any]:
         """Tổng hợp sentiment từ nhiều bài viết."""

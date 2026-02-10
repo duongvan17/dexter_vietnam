@@ -47,7 +47,7 @@ NHIỆM VỤ: Phân tích câu hỏi và tạo plan để gọi các tools cần
 3. **technical_indicators** - Chỉ báo kỹ thuật:
    - Actions: all, summary, rsi, macd, bollinger, moving_averages
 
-4. Các tools khác: market_overview, news_aggregator, stock_screener, dcf_valuation, etc.
+4. Các tools khác: market_overview, news_aggregator, stock_screener, etc.
 
 ## Ví dụ:
 - "Phân tích FPT" → vnstock_connector(stock_overview) + financial_ratios(all) + technical_indicators(summary)
@@ -84,8 +84,7 @@ Dựa trên dữ liệu từ tools, hãy tổng hợp câu trả lời tiếng V
 """
 
 class ConversationMemory:
-    """Lưu lịch sử hội thoại."""
-    
+
     def __init__(self, max_turns: int = 20):
         self.max_turns = max_turns
         self.history: List[Dict[str, str]] = []
@@ -215,18 +214,13 @@ class Planner:
         }
 
 
-# =====================================================================
-# Executor
-# =====================================================================
-
 class Executor:
-    """Thực thi tools theo plan."""
-    
+
     def __init__(self, registry: ToolRegistry):
         self.registry = registry
     
     async def execute_plan(self, plan: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """Execute tất cả steps trong plan."""
+
         steps = plan.get("steps", [])
         if not steps:
             return [{"error": "Không có steps trong plan"}]
@@ -266,12 +260,7 @@ class Executor:
             return {"success": False, "error": str(e)}
 
 
-# =====================================================================
-# Synthesizer
-# =====================================================================
-
 class Synthesizer:
-    """Tổng hợp kết quả từ tools thành câu trả lời."""
     
     def __init__(self, llm: LLMWrapper):
         self.llm = llm
@@ -316,12 +305,7 @@ class Synthesizer:
         return "\n\n".join(sections)
 
 
-# =====================================================================
-# Orchestrator
-# =====================================================================
-
 class AgentOrchestrator:
-    """Main orchestrator - đơn giản hóa, để LLM tự quyết định."""
     
     def __init__(
         self,
@@ -402,13 +386,13 @@ class AgentOrchestrator:
             return error_msg
     
     def _is_greeting(self, query: str) -> bool:
-        """Check greeting."""
+
         greetings = ["xin chào", "hello", "hi", "chào", "hey", "help"]
         q = query.lower().strip()
         return any(q.startswith(g) or q == g for g in greetings)
     
     def _greeting_response(self) -> str:
-        """Greeting message."""
+
         return (
             "Xin chào! Tôi là **Dexter** — trợ lý AI phân tích chứng khoán Việt Nam 🇻🇳\n\n"
             "Tôi có thể giúp bạn:\n"
