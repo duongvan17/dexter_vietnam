@@ -1,16 +1,4 @@
-"""
-Module 11: Alerts - Hệ thống cảnh báo giá & tin tức
 
-Theo CODING_ROADMAP.md - Module 11:
-- create_price_alert: Tạo cảnh báo giá
-- create_news_alert: Tạo cảnh báo tin tức
-- check_alerts: Kiểm tra & kích hoạt alerts
-- list_alerts: Liệt kê tất cả alerts
-- delete_alert: Xóa alert
-- alert_history: Lịch sử alerts đã kích hoạt
-
-Storage: JSON file (alerts.json)
-"""
 from dexter_vietnam.tools.base import BaseTool
 from dexter_vietnam.tools.vietnam.data.vnstock_connector import VnstockTool
 from typing import Dict, Any, Optional, List
@@ -130,13 +118,6 @@ class AlertManager:
 
 
 class AlertsTool(BaseTool):
-    """
-    Hệ thống cảnh báo chứng khoán Việt Nam:
-    - Cảnh báo giá (vượt ngưỡng, giảm dưới, % thay đổi)
-    - Cảnh báo tin tức (keyword matching)
-    - Cảnh báo kỹ thuật (RSI, MACD signals)
-    - Kiểm tra & kích hoạt alerts tự động
-    """
 
     def __init__(self, alerts_file: Optional[str] = None):
         self._data_tool = VnstockTool()
@@ -155,19 +136,7 @@ class AlertsTool(BaseTool):
         )
 
     async def run(self, action: str = "list", **kwargs) -> Dict[str, Any]:
-        """
-        Thực thi action.
 
-        Actions:
-            create_price   - Tạo cảnh báo giá
-            create_technical - Tạo cảnh báo kỹ thuật
-            create_news    - Tạo cảnh báo tin tức
-            check          - Kiểm tra tất cả alerts
-            list           - Liệt kê alerts
-            delete         - Xóa alert theo ID
-            history        - Lịch sử kích hoạt
-            clear          - Xóa tất cả alerts
-        """
         action_map = {
             "create_price": self.create_price_alert,
             "create_technical": self.create_technical_alert,
@@ -192,9 +161,6 @@ class AlertsTool(BaseTool):
             logger.error(f"Alert action '{action}' failed: {e}", exc_info=True)
             return {"success": False, "error": f"Lỗi thực thi {action}: {str(e)}"}
 
-    # =================================================================
-    # CREATE PRICE ALERT
-    # =================================================================
 
     async def create_price_alert(
         self,
@@ -204,19 +170,7 @@ class AlertsTool(BaseTool):
         note: str = "",
         **kwargs,
     ) -> Dict[str, Any]:
-        """
-        Tạo cảnh báo giá.
 
-        Args:
-            symbol: Mã cổ phiếu (VD: VNM, FPT)
-            target_price: Giá mục tiêu (nghìn VND)
-            condition: Điều kiện kích hoạt
-                - "above": Giá >= target_price
-                - "below": Giá <= target_price
-                - "change_up": Thay đổi % tăng >= target_price (%)
-                - "change_down": Thay đổi % giảm >= target_price (%)
-            note: Ghi chú tùy chọn
-        """
         symbol = symbol.upper()
         if condition not in ("above", "below", "change_up", "change_down"):
             return {
@@ -257,9 +211,6 @@ class AlertsTool(BaseTool):
             },
         }
 
-    # =================================================================
-    # CREATE TECHNICAL ALERT
-    # =================================================================
 
     async def create_technical_alert(
         self,
@@ -270,18 +221,7 @@ class AlertsTool(BaseTool):
         note: str = "",
         **kwargs,
     ) -> Dict[str, Any]:
-        """
-        Tạo cảnh báo chỉ báo kỹ thuật.
 
-        Args:
-            symbol: Mã cổ phiếu
-            indicator: Chỉ báo (rsi, volume_spike)
-                - rsi: RSI vượt/giảm dưới ngưỡng
-                - volume_spike: Khối lượng đột biến (x lần so trung bình)
-            threshold: Ngưỡng kích hoạt
-            condition: above hoặc below
-            note: Ghi chú
-        """
         symbol = symbol.upper()
         if indicator not in ("rsi", "volume_spike"):
             return {
@@ -322,10 +262,6 @@ class AlertsTool(BaseTool):
             },
         }
 
-    # =================================================================
-    # CREATE NEWS ALERT
-    # =================================================================
-
     async def create_news_alert(
         self,
         symbol: str = "",
@@ -333,14 +269,7 @@ class AlertsTool(BaseTool):
         note: str = "",
         **kwargs,
     ) -> Dict[str, Any]:
-        """
-        Tạo cảnh báo tin tức.
 
-        Args:
-            symbol: Mã cổ phiếu (tùy chọn)
-            keywords: Danh sách từ khóa cần theo dõi
-            note: Ghi chú
-        """
         if not symbol and not keywords:
             return {
                 "success": False,
@@ -373,10 +302,6 @@ class AlertsTool(BaseTool):
                 "keywords": keywords,
             },
         }
-
-    # =================================================================
-    # CHECK ALERTS
-    # =================================================================
 
     async def check_alerts(self, **kwargs) -> Dict[str, Any]:
         """
@@ -691,9 +616,6 @@ class AlertsTool(BaseTool):
             "message": "Đã xóa tất cả alerts và lịch sử.",
         }
 
-    # =================================================================
-    # HELPER METHODS
-    # =================================================================
 
     async def _get_current_price(self, symbol: str) -> Optional[float]:
         """Lấy giá hiện tại của cổ phiếu."""

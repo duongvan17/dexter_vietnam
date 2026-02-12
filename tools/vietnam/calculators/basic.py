@@ -1,14 +1,4 @@
-"""
-Module 13: Calculators - Công cụ tính toán tài chính
 
-Theo CODING_ROADMAP.md - Module 13:
-- calculate_compound_interest: Lãi kép (có nộp thêm hàng tháng)
-- calculate_position_sizing: Khối lượng vào lệnh theo quản lý vốn
-- calculate_tax: Thuế giao dịch & TNCN chứng khoán Việt Nam
-- calculate_breakeven: Giá hoà vốn sau phí
-- calculate_margin: Tính margin & call margin
-- calculate_dca: Dollar-Cost Averaging
-"""
 from dexter_vietnam.tools.base import BaseTool
 from typing import Dict, Any, Optional, List
 import math
@@ -16,9 +6,6 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# =====================================================================
-# Hằng số thuế & phí chứng khoán Việt Nam
-# =====================================================================
 VN_SELL_TAX_RATE = 0.001          # Thuế bán 0.1% trên giá trị bán
 VN_BROKER_FEE_DEFAULT = 0.0015   # Phí môi giới mặc định 0.15%
 VN_PERSONAL_INCOME_TAX = 0.001   # Thuế TNCN 0.1% trên giá trị bán (đã gộp trong sell tax)
@@ -26,15 +13,6 @@ VN_LOT_SIZE = 100                # 1 lô = 100 cổ phiếu
 
 
 class CalculatorsTool(BaseTool):
-    """
-    Công cụ tính toán tài chính cho nhà đầu tư Việt Nam:
-    - Lãi kép (compound interest) có nộp thêm hàng tháng
-    - Position sizing (khối lượng vào lệnh) theo quản lý rủi ro
-    - Thuế & phí giao dịch chứng khoán VN
-    - Giá hoà vốn (breakeven)
-    - Margin & call margin
-    - DCA (Dollar-Cost Averaging)
-    """
 
     def get_name(self) -> str:
         return "calculators"
@@ -49,15 +27,7 @@ class CalculatorsTool(BaseTool):
         )
 
     async def run(self, action: str = "compound_interest", **kwargs) -> Dict[str, Any]:
-        """
-        Actions:
-            compound_interest - Tính lãi kép
-            position_sizing   - Tính khối lượng vào lệnh
-            tax               - Tính thuế & phí giao dịch
-            breakeven         - Tính giá hoà vốn
-            margin            - Tính margin
-            dca               - Tính DCA
-        """
+
         action_map = {
             "compound_interest": self.calculate_compound_interest,
             "position_sizing": self.calculate_position_sizing,
@@ -80,9 +50,6 @@ class CalculatorsTool(BaseTool):
             logger.error(f"Calculator '{action}' failed: {e}", exc_info=True)
             return {"success": False, "error": f"Lỗi tính toán: {str(e)}"}
 
-    # =================================================================
-    # 1. COMPOUND INTEREST - Lãi kép
-    # =================================================================
 
     async def calculate_compound_interest(
         self,
@@ -93,16 +60,7 @@ class CalculatorsTool(BaseTool):
         compounds_per_year: int = 12,
         **kwargs,
     ) -> Dict[str, Any]:
-        """
-        Tính lãi kép.
 
-        Args:
-            principal: Số tiền gốc (VND), mặc định 100 triệu
-            annual_rate: Lãi suất năm (0.10 = 10%)
-            years: Số năm đầu tư
-            monthly_contribution: Số tiền nộp thêm hàng tháng (VND)
-            compounds_per_year: Số lần ghép lãi/năm (12=hàng tháng)
-        """
         n = compounds_per_year
         r = annual_rate
         t = years
@@ -163,9 +121,6 @@ class CalculatorsTool(BaseTool):
             ),
         }
 
-    # =================================================================
-    # 2. POSITION SIZING - Khối lượng vào lệnh
-    # =================================================================
 
     async def calculate_position_sizing(
         self,
@@ -176,16 +131,7 @@ class CalculatorsTool(BaseTool):
         broker_fee: float = VN_BROKER_FEE_DEFAULT,
         **kwargs,
     ) -> Dict[str, Any]:
-        """
-        Tính khối lượng vào lệnh theo nguyên tắc quản lý vốn.
 
-        Args:
-            capital: Tổng vốn (VND)
-            risk_percent: % vốn chấp nhận mất tối đa (mặc định 2%)
-            entry_price: Giá mua dự kiến (nghìn VND)
-            stop_loss_price: Giá cắt lỗ (nghìn VND)
-            broker_fee: Phí môi giới (mặc định 0.15%)
-        """
         if entry_price <= 0:
             return {"success": False, "error": "entry_price phải > 0"}
         if stop_loss_price >= entry_price:
@@ -259,10 +205,6 @@ class CalculatorsTool(BaseTool):
             ),
         }
 
-    # =================================================================
-    # 3. TAX - Thuế & phí giao dịch CK Việt Nam
-    # =================================================================
-
     async def calculate_tax(
         self,
         buy_price: float = 50.0,
@@ -271,20 +213,7 @@ class CalculatorsTool(BaseTool):
         broker_fee: float = VN_BROKER_FEE_DEFAULT,
         **kwargs,
     ) -> Dict[str, Any]:
-        """
-        Tính thuế & phí giao dịch chứng khoán Việt Nam.
 
-        Phí giao dịch CK Việt Nam:
-        - Phí môi giới MUA: ~0.15% giá trị mua
-        - Phí môi giới BÁN: ~0.15% giá trị bán
-        - Thuế bán (thuế TNCN): 0.1% giá trị bán
-
-        Args:
-            buy_price: Giá mua (nghìn VND)
-            sell_price: Giá bán (nghìn VND)
-            quantity: Số lượng cổ phiếu
-            broker_fee: Phí môi giới (mặc định 0.15%)
-        """
         buy_value = quantity * buy_price * 1000    # VND
         sell_value = quantity * sell_price * 1000
 
@@ -332,9 +261,6 @@ class CalculatorsTool(BaseTool):
             ),
         }
 
-    # =================================================================
-    # 4. BREAKEVEN - Giá hoà vốn
-    # =================================================================
 
     async def calculate_breakeven(
         self,
@@ -344,16 +270,7 @@ class CalculatorsTool(BaseTool):
         additional_buys: Optional[List[Dict]] = None,
         **kwargs,
     ) -> Dict[str, Any]:
-        """
-        Tính giá hoà vốn sau phí (bao gồm mua thêm / trung bình giá).
 
-        Args:
-            buy_price: Giá mua lần 1 (nghìn VND)
-            quantity: Số lượng lần 1
-            broker_fee: Phí môi giới
-            additional_buys: Các lần mua thêm
-                [{"price": 48.0, "quantity": 500}, ...]
-        """
         # Tính tổng cost bao gồm phí
         buys = [{"price": buy_price, "quantity": quantity}]
         if additional_buys:
@@ -407,10 +324,6 @@ class CalculatorsTool(BaseTool):
             ),
         }
 
-    # =================================================================
-    # 5. MARGIN - Tính toán margin
-    # =================================================================
-
     async def calculate_margin(
         self,
         equity: float = 100_000_000,
@@ -422,18 +335,7 @@ class CalculatorsTool(BaseTool):
         holding_days: int = 30,
         **kwargs,
     ) -> Dict[str, Any]:
-        """
-        Tính toán giao dịch ký quỹ (margin).
 
-        Args:
-            equity: Tiền tự có (VND)
-            margin_ratio: Tỷ lệ ký quỹ (50% = cho vay 1:1)
-            entry_price: Giá mua (nghìn VND)
-            quantity: Số lượng CP (0 = tính tối đa)
-            maintenance_rate: Tỷ lệ duy trì ký quỹ (%)
-            interest_rate: Lãi suất margin (%/năm)
-            holding_days: Số ngày giữ margin
-        """
         margin_pct = margin_ratio / 100
         maintenance_pct = maintenance_rate / 100
 
@@ -514,10 +416,6 @@ class CalculatorsTool(BaseTool):
             ),
         }
 
-    # =================================================================
-    # 6. DCA - Dollar-Cost Averaging
-    # =================================================================
-
     async def calculate_dca(
         self,
         symbol: str = "",
@@ -529,19 +427,7 @@ class CalculatorsTool(BaseTool):
         broker_fee: float = VN_BROKER_FEE_DEFAULT,
         **kwargs,
     ) -> Dict[str, Any]:
-        """
-        Tính toán DCA (mua đều hàng tháng).
 
-        Args:
-            symbol: Mã CP (tuỳ chọn, để hiển thị)
-            monthly_amount: Số tiền mua mỗi tháng (VND)
-            months: Số tháng
-            prices: Danh sách giá mỗi tháng (nghìn VND). 
-                    Nếu không cung cấp → dùng simulation
-            start_price: Giá bắt đầu (nếu không có prices)
-            volatility: Biến động % hàng tháng (để simulation)
-            broker_fee: Phí môi giới
-        """
         # Generate simulated prices if not provided
         if not prices:
             import random

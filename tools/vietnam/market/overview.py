@@ -196,11 +196,7 @@ class MarketOverviewTool(BaseTool):
 
 
     async def _market_status(self, **kwargs) -> Dict[str, Any]:
-        """
-        Tổng quan thị trường:
-        - VNINDEX, HNX, UPCOM snapshot
-        - Top gainers / losers
-        """
+
         top_n = kwargs.get("top_n", 10)
 
         # Lấy 3 chỉ số chính
@@ -262,13 +258,7 @@ class MarketOverviewTool(BaseTool):
 
 
     async def _index_detail(self, **kwargs) -> Dict[str, Any]:
-        """
-        Chi tiết 1 chỉ số thị trường.
 
-        Args:
-            symbol: VNINDEX, HNX, hoặc UPCOM
-            period: Khoảng thời gian (1m, 3m, 6m, 1y) — default 3m
-        """
         index_code = kwargs.get("symbol", "VNINDEX").upper()
         if index_code not in ["VNINDEX", "HNX", "UPCOM"]:
             index_code = "VNINDEX"
@@ -350,12 +340,7 @@ class MarketOverviewTool(BaseTool):
 
 
     async def _sector_performance(self, **kwargs) -> Dict[str, Any]:
-        """
-        Hiệu suất theo ngành.
 
-        Tính trung bình thay đổi giá của các mã đại diện
-        trong từng ngành → xếp hạng ngành.
-        """
         period = kwargs.get("period", "1d")
         period_days = {"1d": 5, "5d": 10, "1m": 35, "3m": 100}
         days = period_days.get(period, 5)
@@ -429,15 +414,7 @@ class MarketOverviewTool(BaseTool):
 
 
     async def _macro_indicators(self, **kwargs) -> Dict[str, Any]:
-        """
-        Chỉ số vĩ mô Việt Nam.
-
-        Crawl từ các nguồn công khai:
-        - Lãi suất SBV
-        - Tỷ giá USD/VND
-        - Giá vàng
-        - CPI / Lạm phát
-        """
+ 
         macro = {}
 
         # --- Lãi suất ---
@@ -545,12 +522,7 @@ class MarketOverviewTool(BaseTool):
 
 
     async def _market_breadth(self, **kwargs) -> Dict[str, Any]:
-        """
-        Phân tích độ rộng thị trường:
-        - Số mã tăng / giảm / đứng yên
-        - Advance/Decline Ratio
-        - Volume phân bổ
-        """
+ 
         universe = self.TOP_SYMBOLS
         stocks = []
 
@@ -609,13 +581,7 @@ class MarketOverviewTool(BaseTool):
 
 
     async def _market_summary(self, **kwargs) -> Dict[str, Any]:
-        """
-        Tổng hợp tất cả thông tin thị trường:
-        - Indices + top movers
-        - Sector performance
-        - Breadth
-        → Đánh giá & khuyến nghị
-        """
+
         # Thu thập dữ liệu
         status = await self._market_status(**kwargs)
         sector = await self._sector_performance(**kwargs)

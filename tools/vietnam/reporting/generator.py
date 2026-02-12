@@ -1,13 +1,4 @@
-"""
-Module 12: Reporting - Hệ thống báo cáo tự động
 
-Theo CODING_ROADMAP.md - Module 12:
-- generate_stock_report: Báo cáo phân tích 1 cổ phiếu
-- generate_daily_report: Báo cáo thị trường ngày
-- generate_weekly_report: Báo cáo thị trường tuần
-- generate_portfolio_report: Báo cáo danh mục đầu tư
-- export_to_file: Export báo cáo ra Markdown/HTML
-"""
 from dexter_vietnam.tools.base import BaseTool
 from dexter_vietnam.tools.vietnam.data.vnstock_connector import VnstockTool
 from typing import Dict, Any, Optional, List
