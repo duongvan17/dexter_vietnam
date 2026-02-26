@@ -22,9 +22,18 @@ class CalculatorsTool(BaseTool):
             "Công cụ tính toán tài chính: lãi kép, position sizing "
             "(khối lượng vào lệnh), thuế & phí giao dịch CK Việt Nam, "
             "giá hoà vốn, margin, DCA. "
-            "Actions: compound_interest, position_sizing, tax, "
-            "breakeven, margin, dca."
         )
+
+    def get_actions(self) -> dict:
+        return {
+            "compound_interest": "Tính lãi kép: số tiền cuối kỳ, lãi suất, số năm",
+            "position_sizing": "Tính khối lượng vào lệnh theo % rủi ro, stop-loss",
+            "tax": "Tính thuế + phí giao dịch chứng khoán Việt Nam (0.1% thuế bán)",
+            "breakeven": "Tính giá hoà vốn sau khi tính phí mua/bán",
+            "margin": "Tính margin call, tỷ lệ đòn bẩy",
+            "dca": "Tính DCA (Dollar Cost Averaging): giá vốn bình quân",
+        }
+
 
     async def run(self, action: str = "compound_interest", **kwargs) -> Dict[str, Any]:
 

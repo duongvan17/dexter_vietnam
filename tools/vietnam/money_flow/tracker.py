@@ -21,6 +21,18 @@ class MoneyFlowTool(BaseTool):
             "giao dịch nội bộ, top mã được mua/bán nhiều nhất."
         )
 
+    def get_actions(self) -> dict:
+        return {
+            "flow_analysis": "Phân tích dòng tiền tổng hợp (OBV, A/D, MFI) cho 1 mã",
+            "foreign": "Giao dịch khối ngoại của 1 mã cụ thể",
+            "foreign_history": "Lịch sử volume + phiên tăng/giảm — proxy dòng tiền ngoại",
+            "top_foreign_buy": "Top mã khối ngoại mua ròng nhiều nhất (scan blue-chip)",
+            "top_foreign_sell": "Top mã khối ngoại bán ròng nhiều nhất (scan blue-chip)",
+            "proprietary": "Giao dịch tự doanh CTCK của 1 mã",
+            "insider": "Giao dịch nội bộ: cổ đông lớn, HĐQT",
+        }
+
+
     async def run(self, symbol: str = "", action: str = "foreign", **kwargs) -> Dict[str, Any]:
 
         action_map = {

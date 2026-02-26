@@ -78,6 +78,18 @@ class StockScreenerTool(BaseTool):
             "lọc theo ngành, cổ tức, bộ lọc tuỳ chỉnh."
         )
 
+    def get_actions(self) -> dict:
+        return {
+            "value": "Lọc cổ phiếu giá trị: P/E thấp, ROE cao, P/B thấp",
+            "growth": "Lọc cổ phiếu tăng trưởng: EPS tăng mạnh, doanh thu tăng",
+            "oversold": "Lọc cổ phiếu quá bán: RSI < 30 (cơ hội mua)",
+            "overbought": "Lọc cổ phiếu quá mua: RSI > 70 (cơ hội bán)",
+            "industry": "Lọc cổ phiếu theo ngành (cần industry trong params)",
+            "dividend": "Lọc cổ phiếu cổ tức cao và ổn định",
+            "custom": "Bộ lọc tuỳ chỉnh (truyền criteria trong params)",
+        }
+
+
     async def run(self, symbol: str = "", action: str = "value", **kwargs) -> Dict[str, Any]:
 
         action_map = {

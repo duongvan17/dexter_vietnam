@@ -1,7 +1,4 @@
-"""
-LLM Wrapper - Hỗ trợ OpenAI, Anthropic, Google Gemini
-Dùng cho Agent Orchestrator
-"""
+
 from typing import Optional, List, Dict, Any
 import json
 import logging
@@ -82,16 +79,7 @@ class LLMWrapper:
         prompt: str,
         system_prompt: Optional[str] = None,
     ) -> str:
-        """
-        Generate text from LLM.
 
-        Args:
-            prompt: User prompt
-            system_prompt: System prompt (optional)
-
-        Returns:
-            Generated text
-        """
         try:
             if self.provider == "openai":
                 return self._generate_openai(prompt, system_prompt)

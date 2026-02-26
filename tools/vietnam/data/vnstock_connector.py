@@ -37,6 +37,17 @@ class VnstockTool(BaseTool):
         - Chỉ số tài chính (P/E, ROE, ROA, etc.)
         - Chỉ số thị trường (VNINDEX, VN30, HNX)
         """
+
+    def get_actions(self) -> dict:
+        return {
+            "stock_overview": "Thông tin tổng quan công ty (tên, ngành, vốn hóa)",
+            "stock_price": "Lịch sử giá OHLCV theo ngày/tuần/tháng",
+            "financial_report": "Báo cáo tài chính (BalanceSheet / IncomeStatement / CashFlow)",
+            "financial_ratio": "Chỉ số tài chính thô (P/E, ROE, ROA, EPS...)",
+            "foreign_trading": "Giao dịch khối ngoại của 1 mã",
+            "market_index": "Dữ liệu chỉ số thị trường (VNINDEX, VN30, HNX, UPCOM)",
+        }
+
     
     async def run(self, action: str, **kwargs) -> Dict[str, Any]:
 

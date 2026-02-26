@@ -48,6 +48,20 @@ class TechnicalIndicatorsTool(BaseTool):
             "EMA/SMA, Stochastic Oscillator, ATR."
         )
 
+    def get_actions(self) -> dict:
+        return {
+            "summary": "Snapshot tất cả chỉ báo + đánh giá tổng hợp (nên dùng mặc định)",
+            "all": "Tất cả chỉ báo dạng time-series (nhiều dữ liệu hơn summary)",
+            "rsi": "RSI — phát hiện quá mua (>70) / quá bán (<30)",
+            "macd": "MACD — crossover bullish/bearish, histogram",
+            "bollinger": "Bollinger Bands — %B, dải trên/dưới, breakout",
+            "sma": "SMA (20, 50, 200) — xu hướng dài hạn, Golden/Death Cross",
+            "ema": "EMA (9, 21, 50) — xu hướng ngắn hạn",
+            "stochastic": "Stochastic Oscillator (%K, %D)",
+            "atr": "ATR — biên độ biến động, gợi ý stop-loss",
+        }
+
+
     async def run(self, action: str = "all", symbol: str = "", **kwargs) -> Dict[str, Any]:
 
         action_map = {

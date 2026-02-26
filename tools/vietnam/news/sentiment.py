@@ -51,6 +51,15 @@ class SentimentAnalysisTool(BaseTool):
             "điểm số 0-1, lý do."
         )
 
+    def get_actions(self) -> dict:
+        return {
+            "analyze": "Phân tích sentiment cho 1 mã (tự động lấy tin + phân tích)",
+            "stock_sentiment": "Tổng hợp sentiment nhiều tin của 1 mã cổ phiếu",
+            "market_sentiment": "Sentiment tổng quan thị trường",
+            "analyze_text": "Phân tích sentiment của 1 URL bài báo cụ thể",
+        }
+
+
     async def run(self, symbol: str = "", action: str = "analyze", **kwargs) -> Dict[str, Any]:
  
         action_map = {
@@ -124,26 +133,16 @@ class SentimentAnalysisTool(BaseTool):
 
 
     async def _stock_sentiment(self, symbol: str, **kwargs) -> Dict[str, Any]:
-        """Lấy tin + phân tích sentiment tổng hợp cho 1 mã."""
+        """Lấy tin RSS + phân tích sentiment tổng hợp cho 1 mã."""
         if not symbol:
             return {"success": False, "error": "Cần cung cấp mã cổ phiếu (symbol)"}
 
         limit = kwargs.get("limit", 5)
-        source = kwargs.get("source", "all")  # cafef, vnexpress, all
-        use_rss = kwargs.get("use_rss", False)  # True: dùng RSS, False: dùng crawl
+        source = kwargs.get("source", "all")
 
-        # Lấy tin liên quan - chọn phương thức
-        if use_rss:
-            # Sử dụng RSS feed (nhanh, ổn định)
-            news_result = await self._news_tool.run(
-                symbol=symbol, action="rss", limit=limit, source=source
-            )
-        else:
-            # Sử dụng crawl HTML (mặc định, chi tiết hơn)
-            news_result = await self._news_tool.run(
-                symbol=symbol, action="stock_news", limit=limit, source=source
-            )
-        
+        news_result = await self._news_tool.run(
+            symbol=symbol, action="stock_news", limit=limit, source=source
+        )
         if not news_result.get("success"):
             return news_result
 
@@ -153,56 +152,43 @@ class SentimentAnalysisTool(BaseTool):
                 "success": True,
                 "symbol": symbol.upper(),
                 "report": "stock_sentiment",
-                "source_method": "rss" if use_rss else "crawl",
                 "data": [],
                 "overall": {"sentiment": "neutral", "score": 0.5, "reasoning": "Không tìm thấy tin tức"},
             }
 
-        # Phân tích từng bài (dùng title + summary)
         sentiments = []
         for article in articles:
             text = f"{article.get('title', '')} {article.get('summary', '')}"
             if text.strip():
                 result = await self._do_sentiment(text, title=article.get("title", ""))
                 sentiments.append({
-                    "title": article.get("title", ""),
-                    "url": article.get("url", ""),
-                    "source": article.get("source", ""),
+                    "title":     article.get("title", ""),
+                    "url":       article.get("url", ""),
+                    "source":    article.get("source", ""),
+                    "published": article.get("published", ""),
                     "sentiment": result,
                 })
 
-        # Tính overall sentiment
         overall = self._compute_overall_sentiment(sentiments)
 
         return {
-            "success": True,
-            "symbol": symbol.upper(),
-            "report": "stock_sentiment",
-            "source_method": "rss" if use_rss else "crawl",
+            "success":          True,
+            "symbol":           symbol.upper(),
+            "report":           "stock_sentiment",
             "articles_analyzed": len(sentiments),
-            "data": sentiments,
-            "overall": overall,
+            "data":             sentiments,
+            "overall":          overall,
         }
 
 
     async def _market_sentiment(self, symbol: str = "", **kwargs) -> Dict[str, Any]:
-        """Phân tích tâm lý thị trường chung dựa trên tin tức."""
-        limit = kwargs.get("limit", 10)
-        source = kwargs.get("source", "all")  # cafef, vnexpress, all
-        use_rss = kwargs.get("use_rss", False)  # True: dùng RSS, False: dùng crawl
+        """Phân tích tâm lý thị trường chung dựa trên RSS."""
+        limit  = kwargs.get("limit", 10)
+        source = kwargs.get("source", "all")
 
-        # Lấy tin thị trường - chọn phương thức
-        if use_rss:
-            # Sử dụng RSS feed (nhanh, ổn định)
-            news_result = await self._news_tool.run(
-                action="rss", limit=limit, source=source
-            )
-        else:
-            # Sử dụng crawl HTML (mặc định, chi tiết hơn)
-            news_result = await self._news_tool.run(
-                action="market", limit=limit, source=source
-            )
-        
+        news_result = await self._news_tool.run(
+            action="market", limit=limit, source=source
+        )
         if not news_result.get("success"):
             return news_result
 
@@ -210,33 +196,31 @@ class SentimentAnalysisTool(BaseTool):
         if not articles:
             return {
                 "success": True,
-                "report": "market_sentiment",
-                "source_method": "rss" if use_rss else "crawl",
-                "data": [],
+                "report":  "market_sentiment",
+                "data":    [],
                 "overall": {"sentiment": "neutral", "score": 0.5, "reasoning": "Không có tin tức"},
             }
 
-        # Phân tích từng tin
         sentiments = []
         for article in articles:
             text = f"{article.get('title', '')} {article.get('summary', '')}"
             if text.strip():
                 result = await self._do_sentiment(text, title=article.get("title", ""))
                 sentiments.append({
-                    "title": article.get("title", ""),
-                    "source": article.get("source", ""),
+                    "title":     article.get("title", ""),
+                    "source":    article.get("source", ""),
+                    "published": article.get("published", ""),
                     "sentiment": result,
                 })
 
         overall = self._compute_overall_sentiment(sentiments)
 
         return {
-            "success": True,
-            "report": "market_sentiment",
-            "source_method": "rss" if use_rss else "crawl",
+            "success":           True,
+            "report":            "market_sentiment",
             "articles_analyzed": len(sentiments),
-            "data": sentiments,
-            "overall": overall,
+            "data":              sentiments,
+            "overall":           overall,
         }
 
 

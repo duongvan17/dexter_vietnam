@@ -23,6 +23,16 @@ class CompanyRiskTool(BaseTool):
             "rủi ro danh mục, biến động giá, Beta."
         )
 
+    def get_actions(self) -> dict:
+        return {
+            "assessment": "Đánh giá rủi ro tổng hợp (nên dùng mặc định)",
+            "altman_z": "Altman Z-Score — chỉ số dự báo phá sản",
+            "liquidity": "Rủi ro thanh khoản: current ratio, quick ratio, cash ratio",
+            "volatility": "Rủi ro biến động giá: Beta, Sharpe ratio, độ lệch chuẩn",
+            "portfolio": "Rủi ro danh mục đầu tư (cần danh sách symbols trong params)",
+        }
+
+
     async def run(self, symbol: str = "", action: str = "assessment", **kwargs) -> Dict[str, Any]:
 
         action_map = {

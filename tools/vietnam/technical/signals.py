@@ -1,9 +1,4 @@
-"""
-Module 3.2: Trading Signals
-Phát hiện tín hiệu giao dịch dựa trên chỉ báo kỹ thuật
 
-Theo CODING_ROADMAP.md - Module 3
-"""
 from dexter_vietnam.tools.base import BaseTool
 from dexter_vietnam.tools.vietnam.data.vnstock_connector import VnstockTool
 from dexter_vietnam.tools.vietnam.technical.indicators import TechnicalIndicatorsTool
@@ -21,15 +16,6 @@ except ImportError:
 
 
 class TradingSignalsTool(BaseTool):
-    """
-    Phát hiện tín hiệu giao dịch:
-    - RSI overbought / oversold
-    - MACD crossover (bullish / bearish)
-    - Golden Cross / Death Cross
-    - Support / Resistance levels
-    - Trend detection (xu hướng)
-    - Tổng hợp tín hiệu → khuyến nghị
-    """
 
     def __init__(self):
         if ta is None:
@@ -48,6 +34,18 @@ class TradingSignalsTool(BaseTool):
             "Phát hiện tín hiệu giao dịch: RSI overbought/oversold, "
             "MACD crossover, Golden/Death Cross, Support/Resistance, Trend."
         )
+
+    def get_actions(self) -> dict:
+        return {
+            "all": "Tất cả tín hiệu + khuyến nghị tổng hợp",
+            "rsi_signals": "Tín hiệu RSI: overbought/oversold với lịch sử divergence",
+            "macd_signals": "MACD crossover: bullish/bearish signal",
+            "ma_cross": "Golden Cross / Death Cross (SMA 50/200)",
+            "support_resistance": "Vùng hỗ trợ và kháng cự dựa trên price action",
+            "trend": "Phát hiện xu hướng (uptrend / downtrend / sideways)",
+            "recommendation": "Khuyến nghị tổng hợp MUA/BÁN/QUAN SÁT",
+        }
+
 
     async def run(self, action: str = "all", symbol: str = "", **kwargs) -> Dict[str, Any]:
         """

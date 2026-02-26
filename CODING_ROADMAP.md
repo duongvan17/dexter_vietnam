@@ -1,6 +1,6 @@
 # 🗺️ CODING ROADMAP - Dexter Vietnam AI Trading Assistant
 
-**Lộ trình phát triển 18 modules trong 8 tuần**
+**Lộ trình phát triển 9 modules trong 8 tuần**
 
 ---
 
@@ -15,8 +15,8 @@ Xây dựng AI Trading Assistant cho thị trường chứng khoán Việt Nam v
 
 ### Tech Stack
 - **Language**: Python 3.11+
-- **Data Source**: vnstock3 (primary), TCBS/SSI (backup)
-- **LLM**: OpenAI/Anthropic/Google Gemini
+- **Data Source**: vnstock3 (primary)
+- **LLM**: OpenAI
 - **Analysis**: pandas, ta (technical analysis)
 - **CLI**: rich, click
 
@@ -39,12 +39,9 @@ dexter_vietnam/
 │       ├── news/           # Module 5: Tin tức
 │       ├── risk/           # Module 6: Rủi ro
 │       ├── screening/      # Module 7: Sàng lọc
-│       ├── market/         # Module 10: Thị trường
-│       ├── alerts/         # Module 11: Cảnh báo
-│       ├── reporting/      # Module 12: Báo cáo
-│       ├── calculators/    # Module 13: Tính toán
-│       ├── ai/             # Module 17: AI nâng cao
-│       └── premium/        # Module 18: Premium
+│       ├── market/         # Module 8: Thị trường
+│       ├── calculators/    # Module 9: Tính toán
+│
 ├── model/              # LLM wrapper
 ├── utils/              # Utilities
 ├── tests/              # Unit tests
@@ -233,30 +230,6 @@ dexter_vietnam/
 
 ---
 
-## ✅ Module 11: Alerts (P3) — **COMPLETED**
-
-**File**: `tools/vietnam/alerts/manager.py`
-
-### Chức năng
-- `create_price_alert(symbol, target_price, condition)` - Cảnh báo giá
-- `create_news_alert(symbol, keywords)` - Cảnh báo tin tức
-- `check_alerts(current_data)` - Kiểm tra alerts
-
-**Storage**: SQLite hoặc JSON file
-
----
-
-## ✅ Module 12: Reporting (P3) — **COMPLETED**
-
-**File**: `tools/vietnam/reporting/generator.py`
-
-### Chức năng
-- `generate_daily_report(portfolio_id)` - Báo cáo ngày
-- `generate_weekly_report(portfolio_id)` - Báo cáo tuần
-- `export_to_pdf(report_data)` - Export PDF
-
----
-
 ## 🧮 Module 13: Calculators (P3)
 
 **File**: `tools/vietnam/calculators/basic.py`
@@ -265,30 +238,6 @@ dexter_vietnam/
 - `calculate_compound_interest(principal, rate, time, monthly)` - Lãi kép
 - `calculate_position_sizing(capital, risk, entry, stop_loss)` - Khối lượng vào lệnh
 - `calculate_tax(profit, holding_period)` - Thuế
-
----
-
-## 🤖 Module 17: Advanced AI (P4)
-
-**File**: `tools/vietnam/ai/prediction.py`
-
-### Chức năng
-- `predict_next_day(symbol)` - Dự báo xu hướng (LSTM/Transformer)
-- `detect_anomaly(financial_data)` - Phát hiện bất thường
-
-**Models**: TensorFlow/PyTorch
-
----
-
-## 💎 Module 18: Premium Features (P4)
-
-**File**: `tools/vietnam/premium/level2.py`
-
-### Chức năng
-- `get_market_depth(symbol)` - Dữ liệu 10 bước giá
-- `get_intraday_data(symbol, interval)` - Dữ liệu phút
-
-**Data source**: Premium APIs (SSI Pro, VPS, etc.)
 
 ---
 
@@ -334,12 +283,7 @@ dexter_vietnam/
 - [x] CLI interface (rich/click) ✅
 
 ### Tuần 7: Interaction Tools (P3)
-- [x] Module 11-13: Alerts, Reporting, Calculators ✅
-
-### Tuần 8: Advanced & Polish (P4)
-- [ ] Module 17-18: AI prediction, Premium features
-- [ ] Performance optimization
-- [ ] Documentation & deployment
+- [x] Module 13: Calculators ✅
 
 ---
 
@@ -355,11 +299,7 @@ dexter_vietnam/
 | 6 | Risk Management | P2 | 5 | ⚪ Not Started |
 | 7 | Stock Screening | P2 | 5 | ⚪ Not Started |
 | 10 | Market Overview | P1 | 5 | ⚪ Not Started |
-| 11 | Alerts | P3 | 7 | ✅ **COMPLETED** |
-| 12 | Reporting | P3 | 7 | ✅ **COMPLETED** |
 | 13 | Calculators | P3 | 7 | ✅ **COMPLETED** |
-| 17 | Advanced AI | P4 | 8 | ⚪ Not Started |
-| 18 | Premium Features | P4 | 8 | ⚪ Not Started |
 
 ---
 
@@ -373,8 +313,6 @@ dexter_vietnam/
 
 ### Full Product (Tuần 6-8)
 - ✅ CLI interface đẹp
-- ✅ Alert system
-- ✅ Báo cáo tự động
 - ✅ AI prediction
 
 ---

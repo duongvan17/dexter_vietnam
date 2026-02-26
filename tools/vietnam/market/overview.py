@@ -70,6 +70,17 @@ class MarketOverviewTool(BaseTool):
             "hiệu suất ngành, chỉ số vĩ mô, breadth."
         )
 
+    def get_actions(self) -> dict:
+        return {
+            "summary": "Tổng quan đầy đủ: index + breadth + sector ranking (dùng khi hỏi về thị trường)",
+            "status": "Trạng thái thị trường: index, top gainers/losers, breadth nhanh",
+            "index": "Chi tiết 1 chỉ số (VNINDEX/HNX/UPCOM): trend, SMA, volatility",
+            "sector": "Hiệu suất từng ngành: ngân hàng, BĐS, thép, thực phẩm...",
+            "breadth": "Độ rộng thị trường: tỷ lệ CP tăng/giảm, volume phân phối",
+            "macro": "Chỉ số vĩ mô: lãi suất, tỷ giá USD/VND, giá vàng SJC, GDP/CPI",
+        }
+
+
     async def run(self, symbol: str = "", action: str = "status", **kwargs) -> Dict[str, Any]:
  
         action_map = {

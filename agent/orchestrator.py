@@ -36,23 +36,21 @@ NHIỆM VỤ: Phân tích câu hỏi và tạo plan để gọi các tools cần
 }}
 
 ## Lưu ý quan trọng:
-1. **vnstock_connector** - Tool lấy dữ liệu thô từ vnstock:
-   - Actions: stock_overview, stock_price, financial_ratio, financial_report, foreign_trading, all_symbols, market_index
-   - Luôn dùng khi cần thông tin công ty, giá, BCTC
-
-2. **financial_ratios** - Tool phân tích chỉ số tài chính:
-   - Actions: all, valuation, profitability, liquidity, leverage
-   - Dùng để tính toán và đánh giá chỉ số
-
-3. **technical_indicators** - Chỉ báo kỹ thuật:
-   - Actions: all, summary, rsi, macd, bollinger, moving_averages
-
-4. Các tools khác: market_overview, news_aggregator, stock_screener, etc.
+- Chỉ dùng các `tool` và `action` được liệt kê trong mục "Tools có sẵn" ở trên
+- Với `technical_indicators`: dùng `summary` khi cần cái nhìn tổng quan kỹ thuật
+- Với `market_overview`: dùng `summary` khi hỏi tổng quan thị trường
+- Với `money_flow`: dùng `flow_analysis` để phân tích dòng tiền của 1 mã
+- **QUAN TRỌNG - So sánh nhiều cổ phiếu**: Mỗi step chỉ được nhận đúng 1 symbol (string). Khi so sánh 2+ cổ phiếu, hãy tạo các steps RIÊNG BIỆT cho từng symbol, KHÔNG truyền list symbols vào 1 step.
+- **QUAN TRỌNG - Entity resolution**: Nếu câu hỏi dùng đại từ "nó", "cổ phiếu đó", "cái đó", "của nó", v.v. → hãy dựa vào `[Cổ phiếu đang thảo luận]` trong Context hội thoại để xác định symbol cụ thể. KHÔNG để symbol trống.
 
 ## Ví dụ:
-- "Phân tích FPT" → vnstock_connector(stock_overview) + financial_ratios(all) + technical_indicators(summary)
-- "Thông tin VNM" → vnstock_connector(stock_overview) + vnstock_connector(stock_price)
+- "Phân tích FPT" → vnstock_connector(stock_overview, symbol=FPT) + financial_ratios(all, symbol=FPT) + technical_indicators(summary, symbol=FPT)
+- "Thông tin VNM" → vnstock_connector(stock_overview, symbol=VNM) + vnstock_connector(stock_price, symbol=VNM)
 - "Thị trường hôm nay" → market_overview(summary)
+- "Khối ngoại mua gì" → money_flow(top_foreign_buy)
+- "Lọc cổ phiếu giá trị" → stock_screener(value)
+- "So sánh FPT và VNM" → vnstock_connector(stock_overview, symbol=FPT) + financial_ratios(all, symbol=FPT) + vnstock_connector(stock_overview, symbol=VNM) + financial_ratios(all, symbol=VNM)
+- "So sánh kỹ thuật HPG và HSG" → technical_indicators(summary, symbol=HPG) + technical_indicators(summary, symbol=HSG) + financial_ratios(valuation, symbol=HPG) + financial_ratios(valuation, symbol=HSG)
 
 Câu hỏi: {query}
 """
@@ -87,30 +85,56 @@ class ConversationMemory:
 
     def __init__(self, max_turns: int = 20):
         self.max_turns = max_turns
-        self.history: List[Dict[str, str]] = []
-    
-    def add_turn(self, role: str, content: str) -> None:
+        self.history: List[Dict] = []
+        # Track symbols đang thảo luận để hỗ trợ entity resolution
+        self.active_symbols: List[str] = []
+
+    def add_turn(
+        self,
+        role: str,
+        content: str,
+        symbols: Optional[List[str]] = None,
+    ) -> None:
+        """Thêm một lượt hội thoại.
+
+        Args:
+            role: "user" hoặc "assistant".
+            content: Nội dung thuần (KHÔNG bao gồm phần summary tools/timing).
+            symbols: Danh sách symbol liên quan đến lượt này (nếu có).
+        """
         self.history.append({
             "role": role,
             "content": content,
             "timestamp": datetime.now().isoformat(),
+            "symbols": symbols or [],
         })
+        # Cập nhật active symbols từ turn mới nhất có symbol
+        if symbols:
+            self.active_symbols = symbols
+        # Trim khi vượt quá giới hạn
         if len(self.history) > self.max_turns * 2:
             self.history = self.history[-self.max_turns * 2:]
-    
+
     def get_context(self, last_n: int = 3) -> str:
-        """Lấy N turn gần nhất."""
+        """Lấy N turn gần nhất kèm gợi ý entity."""
         recent = self.history[-last_n * 2:]
         if not recent:
             return ""
         lines = []
         for turn in recent:
             role = "User" if turn["role"] == "user" else "Assistant"
-            lines.append(f"{role}: {turn['content'][:200]}")
+            # Tăng từ 200 → 600 ký tự để giữ đủ ngữ cảnh
+            lines.append(f"{role}: {turn['content'][:600]}")
+        # Gắn thêm hint về symbol đang được thảo luận
+        if self.active_symbols:
+            lines.append(
+                f"[Cổ phiếu đang thảo luận: {', '.join(self.active_symbols)}]"
+            )
         return "\n".join(lines)
-    
+
     def clear(self) -> None:
         self.history = []
+        self.active_symbols = []
 
 class Planner:
     
@@ -147,9 +171,7 @@ class Planner:
             return self._simple_fallback(query)
     
     def _simple_fallback(self, query: str) -> Dict[str, Any]:
-        """
-        Fallback đơn giản: phân tích symbol và gọi tools cơ bản.
-        """
+
         query_lower = query.lower()
         
         # Extract symbols
@@ -157,31 +179,44 @@ class Planner:
         stop_words = {"VND", "USD", "GDP", "ETF", "CEO", "CFO"}
         symbols = [s for s in symbols if s not in stop_words]
         
-        symbol = symbols[0] if symbols else ""
-        
         steps = []
+        step_num = 1
+        is_comparison = any(k in query_lower for k in ["so sánh", "compare", "vs", "với", "hay"]) and len(symbols) >= 2
         
-        # Nếu có symbol → lấy thông tin cơ bản
-        if symbol:
-            steps = [
-                {"step": 1, "tool": "vnstock_connector", "action": "stock_overview",
-                 "params": {"symbol": symbol}, "reason": "Thông tin công ty"},
-                {"step": 2, "tool": "vnstock_connector", "action": "stock_price",
-                 "params": {"symbol": symbol}, "reason": "Lịch sử giá"},
-            ]
+        # Nếu có symbol → lấy thông tin từng cổ phiếu
+        if symbols:
+            symbols_to_process = symbols if is_comparison else symbols[:1]
             
-            # Thêm tools khác dựa trên keywords
-            if any(k in query_lower for k in ["phân tích", "đánh giá", "chỉ số"]):
+            for sym in symbols_to_process:
                 steps.append(
-                    {"step": 3, "tool": "financial_ratios", "action": "all",
-                     "params": {"symbol": symbol}, "reason": "Chỉ số tài chính"}
+                    {"step": step_num, "tool": "vnstock_connector", "action": "stock_overview",
+                     "params": {"symbol": sym}, "reason": f"Thông tin công ty {sym}"}
                 )
+                step_num += 1
+                
+                # Thêm tools khác dựa trên keywords
+                if any(k in query_lower for k in ["phân tích", "đánh giá", "chỉ số", "so sánh", "compare"]):
+                    steps.append(
+                        {"step": step_num, "tool": "financial_ratios", "action": "all",
+                         "params": {"symbol": sym}, "reason": f"Chỉ số tài chính {sym}"}
+                    )
+                    step_num += 1
+                
+                if any(k in query_lower for k in ["kỹ thuật", "rsi", "macd", "technical"]):
+                    steps.append(
+                        {"step": step_num, "tool": "technical_indicators", "action": "summary",
+                         "params": {"symbol": sym}, "reason": f"Chỉ báo kỹ thuật {sym}"}
+                    )
+                    step_num += 1
             
-            if any(k in query_lower for k in ["kỹ thuật", "rsi", "macd", "technical"]):
+            # Nếu không có keywords đặc biệt thì lấy giá cho symbol đầu
+            if not any(k in query_lower for k in ["phân tích", "đánh giá", "chỉ số", "so sánh", "compare",
+                                                   "kỹ thuật", "rsi", "macd", "technical"]):
                 steps.append(
-                    {"step": 4, "tool": "technical_indicators", "action": "summary",
-                     "params": {"symbol": symbol}, "reason": "Chỉ báo kỹ thuật"}
+                    {"step": step_num, "tool": "vnstock_connector", "action": "stock_price",
+                     "params": {"symbol": symbols[0]}, "reason": "Lịch sử giá"}
                 )
+                step_num += 1
         
         # Không có symbol → thị trường tổng quan
         else:
@@ -244,7 +279,12 @@ class Executor:
         """Execute một step."""
         tool_name = step.get("tool", "")
         action = step.get("action", "")
-        params = step.get("params", {})
+        params = dict(step.get("params", {}))
+        
+        # Guard: LLM có thể truyền symbol dạng list → chuyển về string
+        if "symbol" in params and isinstance(params["symbol"], list):
+            logger.warning(f"Symbol is a list {params['symbol']}, taking first element")
+            params["symbol"] = params["symbol"][0] if params["symbol"] else ""
         
         tool = self.registry.get_tool(tool_name)
         if tool is None:
@@ -367,10 +407,12 @@ class AgentOrchestrator:
             elapsed = time.time() - start_time
             summary = self._build_summary(plan, results, elapsed)
             final_response = summary + "\n\n" + response
-            
-            # Save to memory
-            self.memory.add_turn("user", query)
-            self.memory.add_turn("assistant", final_response)
+
+            # Lưu vào memory: dùng `response` thuần (không kèm summary tools/timing)
+            # để tránh "noise" khi LLM planner đọc lại context.
+            symbols = plan.get("symbols") or []
+            self.memory.add_turn("user", query, symbols=symbols)
+            self.memory.add_turn("assistant", response, symbols=symbols)
             
             logger.info(f"✅ Completed in {elapsed:.1f}s")
             return final_response
@@ -397,6 +439,7 @@ class AgentOrchestrator:
             "Xin chào! Tôi là **Dexter** — trợ lý AI phân tích chứng khoán Việt Nam 🇻🇳\n\n"
             "Tôi có thể giúp bạn:\n"
             "- 📊 Phân tích cổ phiếu (VD: *Phân tích FPT*)\n"
+            "- ⚖️ So sánh cổ phiếu (VD: *So sánh FPT và VNM*)\n"
             "- 💰 Khối ngoại mua/bán gì (VD: *Khối ngoại mua gì?*)\n"
             "- 📰 Tin tức thị trường (VD: *Tin tức VNM*)\n"
             "- 🔍 Lọc cổ phiếu (VD: *Lọc cổ phiếu giá trị*)\n"

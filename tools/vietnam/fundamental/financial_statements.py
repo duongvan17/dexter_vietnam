@@ -101,6 +101,16 @@ class FinancialStatementsTool(BaseTool):
             "Income Statement, Cash Flow. Tính tăng trưởng YoY."
         )
 
+    def get_actions(self) -> dict:
+        return {
+            "summary": "Tổng quan tài chính (assets, equity, revenue, net_income)",
+            "balance_sheet": "Bảng cân đối kế toán chi tiết",
+            "income_statement": "Kết quả kinh doanh (doanh thu, lợi nhuận)",
+            "cash_flow": "Lưu chuyển tiền tệ (CFO, CFI, CFF)",
+            "growth": "Phân tích tăng trưởng YoY của doanh thu và lợi nhuận",
+        }
+
+
     async def run(self, action: str = "summary", symbol: str = "", **kwargs) -> Dict[str, Any]:
         """
         Args:

@@ -1,6 +1,5 @@
 """
 Base Tool class
-TODO: Implement base class cho tất cả các tools
 """
 from abc import ABC, abstractmethod
 from typing import Any, Dict
@@ -15,7 +14,12 @@ class BaseTool(ABC):
     
     @abstractmethod
     def get_description(self) -> str:
-        """Return tool description"""
+        """Return tool description for LLM"""
+        pass
+
+    @abstractmethod
+    def get_actions(self) -> Dict[str, str]:
+        """Return supported actions: {action_name: short_description}"""
         pass
     
     @abstractmethod

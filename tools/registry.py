@@ -43,10 +43,20 @@ class ToolRegistry:
         return list(self._tools.keys())
 
     def get_tools_description(self) -> str:
-        """Get formatted description of all tools for LLM prompt."""
+        """Get formatted description of all tools for LLM prompt.
+        Automatically includes action list from each tool's get_actions()."""
         lines = []
         for name, tool in self._tools.items():
-            lines.append(f"- **{name}**: {tool.get_description()}")
+            desc = tool.get_description()
+            actions = tool.get_actions()
+            action_list = ", ".join(actions.keys())
+            lines.append(f"- **{name}**: {desc}")
+            lines.append(f"  Actions: {action_list}")
+            # Add per-action hints (first 60 chars)
+            for action_name, action_desc in actions.items():
+                if action_desc:
+                    short = action_desc[:80]
+                    lines.append(f"    - `{action_name}`: {short}")
         return "\n".join(lines)
 
     def get_tools_schema(self) -> List[Dict]:
@@ -157,22 +167,6 @@ def register_all_tools(registry: Optional[ToolRegistry] = None) -> ToolRegistry:
         tools_registered.append("market_overview")
     except Exception as e:
         tools_failed.append(("market_overview", str(e)))
-
-    # --- Module 11: Alerts ---
-    try:
-        from .vietnam.alerts.manager import AlertsTool
-        registry.register(AlertsTool())
-        tools_registered.append("alerts")
-    except Exception as e:
-        tools_failed.append(("alerts", str(e)))
-
-    # --- Module 12: Reporting ---
-    try:
-        from .vietnam.reporting.generator import ReportingTool
-        registry.register(ReportingTool())
-        tools_registered.append("reporting")
-    except Exception as e:
-        tools_failed.append(("reporting", str(e)))
 
     # --- Module 13: Calculators ---
     try:

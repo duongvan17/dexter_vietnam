@@ -33,6 +33,18 @@ class FinancialRatiosTool(BaseTool):
             "Debt/Equity, Current Ratio, EPS, BVPS, Margins."
         )
 
+    def get_actions(self) -> dict:
+        return {
+            "all": "Tất cả chỉ số + đánh giá (valuation, profitability, liquidity, leverage, per_share)",
+            "valuation": "Chỉ số định giá: P/E, P/B, P/S, EV/EBITDA, vốn hóa",
+            "profitability": "Chỉ số sinh lời: ROE, ROA, ROIC, gross/net margin, dividend yield",
+            "liquidity": "Chỉ số thanh khoản: current ratio, quick ratio, interest coverage",
+            "leverage": "Chỉ số đòn bẩy: Debt/Equity, financial leverage",
+            "per_share": "Chỉ số trên mỗi CP: EPS, BVPS, số CP lưu hành",
+            "compare": "So sánh chỉ số qua nhiều năm + xu hướng",
+        }
+
+
     async def run(self, action: str = "all", symbol: str = "", **kwargs) -> Dict[str, Any]:
 
         action_map = {
