@@ -95,13 +95,7 @@ class ConversationMemory:
         content: str,
         symbols: Optional[List[str]] = None,
     ) -> None:
-        """Thêm một lượt hội thoại.
 
-        Args:
-            role: "user" hoặc "assistant".
-            content: Nội dung thuần (KHÔNG bao gồm phần summary tools/timing).
-            symbols: Danh sách symbol liên quan đến lượt này (nếu có).
-        """
         self.history.append({
             "role": role,
             "content": content,

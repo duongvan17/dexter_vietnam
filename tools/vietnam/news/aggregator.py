@@ -26,28 +26,28 @@ HEADERS = {
 # RSS feeds theo category
 RSS_FEEDS = {
     "market": [
-        ("CafeF",     "https://cafef.vn/rss/thi-truong-chung-khoan.rss"),
+        ("CafeF",     "https://cafef.vn/thi-truong-chung-khoan.rss"),
         ("VnExpress", "https://vnexpress.net/rss/kinh-doanh/chung-khoan.rss"),
     ],
     "business": [
-        ("CafeF",     "https://cafef.vn/rss/doanh-nghiep.rss"),
+        ("CafeF",     "https://cafef.vn/doanh-nghiep.rss"),
         ("VnExpress", "https://vnexpress.net/rss/kinh-doanh/doanh-nghiep.rss"),
     ],
     "macro": [
-        ("CafeF",     "https://cafef.vn/rss/vi-mo-dau-tu.rss"),
+        ("CafeF",     "https://cafef.vn/vi-mo-dau-tu.rss"),
         ("VnExpress", "https://vnexpress.net/rss/kinh-doanh.rss"),
     ],
     "home": [
-        ("CafeF",     "https://cafef.vn/rss/trang-chu.rss"),
+        ("CafeF",     "https://cafef.vn/home.rss"),
         ("VnExpress", "https://vnexpress.net/rss/kinh-doanh.rss"),
     ],
 }
 
 # Tất cả feeds gom lại (dùng cho latest / search / stock_news)
 ALL_FEEDS = [
-    ("CafeF",     "https://cafef.vn/rss/trang-chu.rss"),
-    ("CafeF",     "https://cafef.vn/rss/thi-truong-chung-khoan.rss"),
-    ("CafeF",     "https://cafef.vn/rss/doanh-nghiep.rss"),
+    ("CafeF",     "https://cafef.vn/home.rss"),
+    ("CafeF",     "https://cafef.vn/thi-truong-chung-khoan.rss"),
+    ("CafeF",     "https://cafef.vn/doanh-nghiep.rss"),
     ("VnExpress", "https://vnexpress.net/rss/kinh-doanh.rss"),
 ]
 
