@@ -53,3 +53,6 @@ credentials.json
 token.json
 *.key
 *.pem
+
+# Internal docs
+CODING_ROADMAP.md
