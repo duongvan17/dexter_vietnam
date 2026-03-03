@@ -80,7 +80,33 @@ class NewsAggregatorTool(BaseTool):
             "search":     "Tìm kiếm tin theo từ khoá (keyword trong params)",
         }
 
-    async def run(self, symbol: str = "", action: str = "latest", **kwargs) -> Dict[str, Any]:
+    def get_parameters_schema(self) -> dict:
+        no_param = {"properties": {}, "required": []}
+        symbol_param = {
+            "properties": {
+                "symbol": {
+                    "type": "string",
+                    "description": "Mã cổ phiếu (VD: FPT, VNM)",
+                }
+            },
+            "required": ["symbol"],
+        }
+        return {
+            "latest": no_param,
+            "stock_news": symbol_param,
+            "market": no_param,
+            "search": {
+                "properties": {
+                    "keyword": {
+                        "type": "string",
+                        "description": "Từ khoá tìm kiếm tin tức",
+                    }
+                },
+                "required": ["keyword"],
+            },
+        }
+
+    def run(self, symbol: str = "", action: str = "latest", **kwargs) -> Dict[str, Any]:
         action_map = {
             "latest":     self._get_latest_news,
             "search":     self._search_news,
@@ -90,7 +116,7 @@ class NewsAggregatorTool(BaseTool):
         if action not in action_map:
             return {"success": False, "error": f"Action không hợp lệ: {action}. Dùng: {list(action_map.keys())}"}
         try:
-            return await action_map[action](symbol, **kwargs)
+            return action_map[action](symbol, **kwargs)
         except Exception as e:
             return {"success": False, "error": str(e)}
 
@@ -192,7 +218,7 @@ class NewsAggregatorTool(BaseTool):
 
 
 
-    async def _get_latest_news(self, symbol: str = "", **kwargs) -> Dict[str, Any]:
+    def _get_latest_news(self, symbol: str = "", **kwargs) -> Dict[str, Any]:
         """Tin mới nhất từ tất cả nguồn RSS."""
         limit = kwargs.get("limit", 15)
         source = kwargs.get("source", "all")
@@ -215,7 +241,7 @@ class NewsAggregatorTool(BaseTool):
             "data":    articles,
         }
 
-    async def _get_stock_news(self, symbol: str, **kwargs) -> Dict[str, Any]:
+    def _get_stock_news(self, symbol: str, **kwargs) -> Dict[str, Any]:
         """Tin tức liên quan đến 1 mã cổ phiếu (lọc keyword trong title/summary)."""
         if not symbol:
             return {"success": False, "error": "Cần cung cấp mã cổ phiếu (symbol)"}
@@ -240,7 +266,7 @@ class NewsAggregatorTool(BaseTool):
             "data":    filtered,
         }
 
-    async def _get_market_news(self, symbol: str = "", **kwargs) -> Dict[str, Any]:
+    def _get_market_news(self, symbol: str = "", **kwargs) -> Dict[str, Any]:
         """Tin thị trường và vĩ mô."""
         limit    = kwargs.get("limit", 15)
         source   = kwargs.get("source", "all")
@@ -258,7 +284,7 @@ class NewsAggregatorTool(BaseTool):
             "data":     articles,
         }
 
-    async def _search_news(self, symbol: str = "", **kwargs) -> Dict[str, Any]:
+    def _search_news(self, symbol: str = "", **kwargs) -> Dict[str, Any]:
         """Tìm kiếm tin theo keyword trong tất cả RSS feeds."""
         keyword = kwargs.get("keyword", symbol or "")
         limit   = kwargs.get("limit", 10)
@@ -299,7 +325,7 @@ class NewsAggregatorTool(BaseTool):
             logger.warning(f"Lỗi fetch article {url}: {e}")
             return None
 
-    async def get_article_content(self, url: str) -> Dict[str, Any]:
+    def get_article_content(self, url: str) -> Dict[str, Any]:
         """
         Lấy nội dung đầy đủ 1 bài viết từ URL.
         Dùng cho Sentiment Analysis.

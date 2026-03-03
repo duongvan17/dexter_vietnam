@@ -1,8 +1,5 @@
-"""
-Tool Registry - Quản lý và đăng ký tất cả các tools
-Đăng ký tự động các tools từ module vietnam/
-"""
-from typing import Dict, Type, Optional, List
+
+from typing import Dict, Optional, List, Tuple
 from .base import BaseTool
 import logging
 
@@ -42,41 +39,25 @@ class ToolRegistry:
         """Get list of all tool names"""
         return list(self._tools.keys())
 
-    def get_tools_description(self) -> str:
-        """Get formatted description of all tools for LLM prompt.
-        Automatically includes action list from each tool's get_actions()."""
-        lines = []
-        for name, tool in self._tools.items():
-            desc = tool.get_description()
-            actions = tool.get_actions()
-            action_list = ", ".join(actions.keys())
-            lines.append(f"- **{name}**: {desc}")
-            lines.append(f"  Actions: {action_list}")
-            # Add per-action hints (first 60 chars)
-            for action_name, action_desc in actions.items():
-                if action_desc:
-                    short = action_desc[:80]
-                    lines.append(f"    - `{action_name}`: {short}")
-        return "\n".join(lines)
-
-    def get_tools_schema(self) -> List[Dict]:
-        """Get all tools as JSON schema for LLM function calling."""
-        schemas = []
-        for name, tool in self._tools.items():
-            schemas.append({
-                "name": name,
-                "description": tool.get_description(),
-            })
+    def get_function_schemas(self) -> List[Dict]:
+        
+        schemas: List[Dict] = []
+        for _name, tool in self._tools.items():
+            schemas.extend(tool.get_function_schemas())
         return schemas
+
+    def resolve_function_name(self, function_name: str) -> Tuple[Optional[BaseTool], str]:
+
+        if "__" not in function_name:
+            return None, ""
+        parts = function_name.split("__", 1)
+        tool_name, action_name = parts[0], parts[1]
+        tool = self.get_tool(tool_name)
+        return tool, action_name
 
 
 def register_all_tools(registry: Optional[ToolRegistry] = None) -> ToolRegistry:
-    """
-    Discover and register all available tools.
-    
-    Returns:
-        ToolRegistry with all tools registered
-    """
+
     if registry is None:
         registry = ToolRegistry.get_instance()
 

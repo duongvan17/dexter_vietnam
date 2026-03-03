@@ -2,10 +2,14 @@
 CLI Interface for Dexter Vietnam - AI Trading Assistant
 Sử dụng rich & click cho giao diện terminal đẹp
 """
-import asyncio
 import os
 import sys
 import logging
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Load .env sớm
+load_dotenv(Path(__file__).resolve().parent / ".env")
 
 import click
 from rich.console import Console
@@ -53,13 +57,12 @@ HELP_TEXT = """
 """
 
 
-def create_agent(provider: str, model: str, api_key: str):
+def create_agent(model, api_key):
     """Create the AgentOrchestrator with error handling."""
     from dexter_vietnam.agent.orchestrator import AgentOrchestrator
 
     try:
         agent = AgentOrchestrator(
-            provider=provider,
             model=model if model else None,
             api_key=api_key if api_key else None,
         )
@@ -67,26 +70,19 @@ def create_agent(provider: str, model: str, api_key: str):
     except Exception as e:
         console.print(f"[error]Lỗi khởi tạo agent: {e}[/error]")
         console.print(
-            "[warning]Kiểm tra API key trong file .env hoặc truyền qua --api-key[/warning]"
+            "[warning]Kiểm tra OPENROUTER_API_KEY trong file .env hoặc truyền qua --api-key[/warning]"
         )
         sys.exit(1)
 
 
 @click.group(invoke_without_command=True)
-@click.option(
-    "--provider", "-p",
-    type=click.Choice(["openai", "anthropic", "google"], case_sensitive=False),
-    default="openai",
-    help="LLM provider (default: openai)",
-)
-@click.option("--model", "-m", default=None, help="Model name override")
-@click.option("--api-key", "-k", default=None, help="API key override")
+@click.option("--model", "-m", default=lambda: os.getenv("LLM_MODEL") or None, help="Model name (mặc định: đọc từ LLM_MODEL trong .env)")
+@click.option("--api-key", "-k", default=None, help="OpenRouter API key override")
 @click.option("--debug", is_flag=True, help="Enable debug logging")
 @click.pass_context
-def cli(ctx, provider, model, api_key, debug):
+def cli(ctx, model, api_key, debug):
     """Dexter Vietnam - AI Trading Assistant cho chứng khoán Việt Nam"""
     ctx.ensure_object(dict)
-    ctx.obj["provider"] = provider
     ctx.obj["model"] = model
     ctx.obj["api_key"] = api_key
 
@@ -95,7 +91,6 @@ def cli(ctx, provider, model, api_key, debug):
         logging.getLogger("dexter_vietnam").setLevel(logging.DEBUG)
 
     if ctx.invoked_subcommand is None:
-        # Default: start interactive chat
         ctx.invoke(chat)
 
 
@@ -109,17 +104,15 @@ def chat(ctx):
         border_style="cyan",
     ))
 
-    provider = ctx.obj.get("provider", "openai")
-    model = ctx.obj.get("model")
+    model = ctx.obj.get("model") or os.getenv("LLM_MODEL") or None
     api_key = ctx.obj.get("api_key")
 
     with console.status("[cyan]Đang khởi tạo agent...[/cyan]", spinner="dots"):
-        agent = create_agent(provider, model, api_key)
+        agent = create_agent(model, api_key)
 
     tools_count = len(agent.registry.get_tool_names())
     console.print(
-        f"[success]✅ Sẵn sàng! Provider: {agent.llm.provider} | "
-        f"Model: {agent.llm.model} | Tools: {tools_count}[/success]\n"
+        f"[success]✅ Sẵn sàng! Model: {agent.llm.model} | Tools: {tools_count}[/success]\n"
     )
 
     # Interactive loop
@@ -156,11 +149,11 @@ def chat(ctx):
                     console.print(f"[warning]Lệnh không hợp lệ: {query}. Gõ /help[/warning]")
                     continue
 
-            # Process query
+            # Process query (synchronous - no asyncio.run needed)
             with console.status(
                 "[cyan]🔍 Đang phân tích...[/cyan]", spinner="dots"
             ):
-                response = asyncio.run(agent.chat(query))
+                response = agent.chat(query)
 
             # Display response
             console.print()
@@ -186,15 +179,14 @@ def chat(ctx):
 @click.pass_context
 def ask(ctx, query):
     """Hỏi Dexter một câu hỏi đơn (không tương tác)"""
-    provider = ctx.obj.get("provider", "openai")
-    model = ctx.obj.get("model")
+    model = ctx.obj.get("model") or os.getenv("LLM_MODEL") or None
     api_key = ctx.obj.get("api_key")
 
     with console.status("[cyan]Đang khởi tạo...[/cyan]", spinner="dots"):
-        agent = create_agent(provider, model, api_key)
+        agent = create_agent(model, api_key)
 
     with console.status("[cyan]🔍 Đang phân tích...[/cyan]", spinner="dots"):
-        response = asyncio.run(agent.chat(query))
+        response = agent.chat(query)
 
     console.print(Markdown(response))
 

@@ -111,7 +111,7 @@ class FinancialStatementsTool(BaseTool):
         }
 
 
-    async def run(self, action: str = "summary", symbol: str = "", **kwargs) -> Dict[str, Any]:
+    def run(self, action: str = "summary", symbol: str = "", **kwargs) -> Dict[str, Any]:
         """
         Args:
             action: Hành động
@@ -137,7 +137,7 @@ class FinancialStatementsTool(BaseTool):
         if not symbol:
             return {"success": False, "error": "Symbol không được để trống"}
         try:
-            return await action_map[action](symbol, **kwargs)
+            return action_map[action](symbol, **kwargs)
         except Exception as e:
             return {"success": False, "error": str(e)}
 
@@ -164,9 +164,9 @@ class FinancialStatementsTool(BaseTool):
         skip = skip or {"symbol", "year", "revenue_growth", "profit_growth"}
         return {k: (self._fmt(v) if k not in skip else v) for k, v in d.items()}
 
-    async def _fetch(self, symbol: str, report_type: str, period: str = 'year') -> List[Dict]:
+    def _fetch(self, symbol: str, report_type: str, period: str = 'year') -> List[Dict]:
         """Gọi Module 1 để lấy raw data."""
-        result = await self._data_tool.get_financial_report(
+        result = self._data_tool.get_financial_report(
             symbol=symbol, report_type=report_type, period=period
         )
         if not result.get("success"):
@@ -174,7 +174,7 @@ class FinancialStatementsTool(BaseTool):
         return result["data"]
 
 
-    async def get_balance_sheet(
+    def get_balance_sheet(
         self, symbol: str, period: str = 'year', years: int = 5, **_
     ) -> Dict[str, Any]:
         """
@@ -198,7 +198,7 @@ class FinancialStatementsTool(BaseTool):
                 ]
             }
         """
-        raw = await self._fetch(symbol, 'BalanceSheet', period)
+        raw = self._fetch(symbol, 'BalanceSheet', period)
         normalised = self._normalize(raw, self.BALANCE_SHEET_MAP)
         # sắp xếp mới nhất trước & giới hạn số năm
         normalised.sort(key=lambda x: x.get("year", 0), reverse=True)
@@ -214,7 +214,7 @@ class FinancialStatementsTool(BaseTool):
         }
 
 
-    async def get_income_statement(
+    def get_income_statement(
         self, symbol: str, period: str = 'year', years: int = 5, **_
     ) -> Dict[str, Any]:
         """
@@ -237,7 +237,7 @@ class FinancialStatementsTool(BaseTool):
                 ]
             }
         """
-        raw = await self._fetch(symbol, 'IncomeStatement', period)
+        raw = self._fetch(symbol, 'IncomeStatement', period)
         normalised = self._normalize(raw, self.INCOME_STATEMENT_MAP)
 
         # Tính thêm margins
@@ -267,7 +267,7 @@ class FinancialStatementsTool(BaseTool):
         }
 
 
-    async def get_cash_flow(
+    def get_cash_flow(
         self, symbol: str, period: str = 'year', years: int = 5, **_
     ) -> Dict[str, Any]:
         """
@@ -289,7 +289,7 @@ class FinancialStatementsTool(BaseTool):
                 ]
             }
         """
-        raw = await self._fetch(symbol, 'CashFlow', period)
+        raw = self._fetch(symbol, 'CashFlow', period)
         normalised = self._normalize(raw, self.CASH_FLOW_MAP)
 
         # Tính Free Cash Flow = CFO + CapEx (CapEx đã là số âm)
@@ -311,15 +311,15 @@ class FinancialStatementsTool(BaseTool):
         }
 
 
-    async def get_financial_summary(
+    def get_financial_summary(
         self, symbol: str, period: str = 'year', years: int = 3, **_
     ) -> Dict[str, Any]:
         """
         Tổng hợp 3 báo cáo → trả về tóm tắt sức khoẻ tài chính.
         """
-        bs = await self.get_balance_sheet(symbol, period, years)
-        inc = await self.get_income_statement(symbol, period, years)
-        cf = await self.get_cash_flow(symbol, period, years)
+        bs = self.get_balance_sheet(symbol, period, years)
+        inc = self.get_income_statement(symbol, period, years)
+        cf = self.get_cash_flow(symbol, period, years)
 
         if not all([bs.get("success"), inc.get("success"), cf.get("success")]):
             return {"success": False, "error": "Không lấy đủ dữ liệu tài chính"}
@@ -369,14 +369,14 @@ class FinancialStatementsTool(BaseTool):
         }
 
 
-    async def get_growth_analysis(
+    def get_growth_analysis(
         self, symbol: str, period: str = 'year', years: int = 5, **_
     ) -> Dict[str, Any]:
         """
         Phân tích tăng trưởng YoY cho doanh thu, lợi nhuận, tài sản, vốn chủ.
         """
-        bs = await self.get_balance_sheet(symbol, period, years + 1)
-        inc = await self.get_income_statement(symbol, period, years + 1)
+        bs = self.get_balance_sheet(symbol, period, years + 1)
+        inc = self.get_income_statement(symbol, period, years + 1)
 
         if not bs.get("success") or not inc.get("success"):
             return {"success": False, "error": "Không lấy đủ dữ liệu"}

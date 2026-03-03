@@ -62,7 +62,7 @@ class TechnicalIndicatorsTool(BaseTool):
         }
 
 
-    async def run(self, action: str = "all", symbol: str = "", **kwargs) -> Dict[str, Any]:
+    def run(self, action: str = "all", symbol: str = "", **kwargs) -> Dict[str, Any]:
 
         action_map = {
             "all": self._get_all_indicators,
@@ -80,16 +80,16 @@ class TechnicalIndicatorsTool(BaseTool):
         if not symbol:
             return {"success": False, "error": "Symbol không được để trống"}
         try:
-            return await action_map[action](symbol, **kwargs)
+            return action_map[action](symbol, **kwargs)
         except Exception as e:
             return {"success": False, "error": str(e)}
 
 
-    async def _fetch_price_df(
+    def _fetch_price_df(
         self, symbol: str, start: Optional[str] = None, end: Optional[str] = None
     ) -> pd.DataFrame:
         """Lấy lịch sử giá và trả về DataFrame chuẩn."""
-        result = await self._data_tool.get_stock_price(symbol, start=start, end=end)
+        result = self._data_tool.get_stock_price(symbol, start=start, end=end)
         if not result.get("success"):
             raise ValueError(result.get("error", "Không lấy được dữ liệu giá"))
 
@@ -139,7 +139,7 @@ class TechnicalIndicatorsTool(BaseTool):
         return self._tail(out, last_n)
 
 
-    async def _get_rsi(self, symbol: str, **kwargs) -> Dict[str, Any]:
+    def _get_rsi(self, symbol: str, **kwargs) -> Dict[str, Any]:
         """
         RSI - Chỉ số sức mạnh tương đối.
         > 70: Quá mua (overbought) → Có thể giảm
@@ -147,7 +147,7 @@ class TechnicalIndicatorsTool(BaseTool):
         """
         window = kwargs.get("window", kwargs.get("period", self.DEFAULTS["rsi_window"]))
         last_n = kwargs.get("last_n")
-        df = await self._fetch_price_df(symbol, kwargs.get("start"), kwargs.get("end"))
+        df = self._fetch_price_df(symbol, kwargs.get("start"), kwargs.get("end"))
 
         rsi = RSIIndicator(close=df["close"], window=window)
         df["rsi"] = rsi.rsi()
@@ -182,7 +182,7 @@ class TechnicalIndicatorsTool(BaseTool):
         return "Thiên giảm (30-40)"
 
 
-    async def _get_macd(self, symbol: str, **kwargs) -> Dict[str, Any]:
+    def _get_macd(self, symbol: str, **kwargs) -> Dict[str, Any]:
         """
         MACD - Đường trung bình hội tụ phân kỳ.
         Signal: MACD cắt lên Signal Line → Mua | Cắt xuống → Bán
@@ -191,7 +191,7 @@ class TechnicalIndicatorsTool(BaseTool):
         slow = kwargs.get("slow", self.DEFAULTS["macd_slow"])
         signal_w = kwargs.get("signal", self.DEFAULTS["macd_signal"])
         last_n = kwargs.get("last_n")
-        df = await self._fetch_price_df(symbol, kwargs.get("start"), kwargs.get("end"))
+        df = self._fetch_price_df(symbol, kwargs.get("start"), kwargs.get("end"))
 
         macd = MACD(close=df["close"], window_fast=fast, window_slow=slow, window_sign=signal_w)
         df["macd"] = macd.macd()
@@ -246,16 +246,12 @@ class TechnicalIndicatorsTool(BaseTool):
         return "Trung tính"
 
 
-    async def _get_bollinger(self, symbol: str, **kwargs) -> Dict[str, Any]:
-        """
-        Bollinger Bands - Dải Bollinger.
-        Giá chạm BB trên → Quá mua | Chạm BB dưới → Quá bán
-        Bollinger Width thu hẹp → Sắp breakout
-        """
+    def _get_bollinger(self, symbol: str, **kwargs) -> Dict[str, Any]:
+  
         window = kwargs.get("window", self.DEFAULTS["bb_window"])
         std = kwargs.get("std", self.DEFAULTS["bb_std"])
         last_n = kwargs.get("last_n")
-        df = await self._fetch_price_df(symbol, kwargs.get("start"), kwargs.get("end"))
+        df = self._fetch_price_df(symbol, kwargs.get("start"), kwargs.get("end"))
 
         bb = BollingerBands(close=df["close"], window=window, window_dev=std)
         df["bb_upper"] = bb.bollinger_hband()
@@ -310,13 +306,13 @@ class TechnicalIndicatorsTool(BaseTool):
         return " | ".join(parts)
 
 
-    async def _get_sma(self, symbol: str, **kwargs) -> Dict[str, Any]:
+    def _get_sma(self, symbol: str, **kwargs) -> Dict[str, Any]:
         """SMA - Đường trung bình giản đơn."""
         windows = kwargs.get("windows", self.DEFAULTS["sma_windows"])
         if isinstance(windows, int):
             windows = [windows]
         last_n = kwargs.get("last_n")
-        df = await self._fetch_price_df(symbol, kwargs.get("start"), kwargs.get("end"))
+        df = self._fetch_price_df(symbol, kwargs.get("start"), kwargs.get("end"))
 
         cols = []
         for w in windows:
@@ -341,13 +337,13 @@ class TechnicalIndicatorsTool(BaseTool):
         }
 
 
-    async def _get_ema(self, symbol: str, **kwargs) -> Dict[str, Any]:
+    def _get_ema(self, symbol: str, **kwargs) -> Dict[str, Any]:
         """EMA - Đường trung bình lũy thừa (phản ứng nhanh hơn SMA)."""
         windows = kwargs.get("windows", self.DEFAULTS["ema_windows"])
         if isinstance(windows, int):
             windows = [windows]
         last_n = kwargs.get("last_n")
-        df = await self._fetch_price_df(symbol, kwargs.get("start"), kwargs.get("end"))
+        df = self._fetch_price_df(symbol, kwargs.get("start"), kwargs.get("end"))
 
         cols = []
         for w in windows:
@@ -411,7 +407,7 @@ class TechnicalIndicatorsTool(BaseTool):
         return " | ".join(parts)
 
 
-    async def _get_stochastic(self, symbol: str, **kwargs) -> Dict[str, Any]:
+    def _get_stochastic(self, symbol: str, **kwargs) -> Dict[str, Any]:
         """
         Stochastic Oscillator (%K, %D).
         %K > 80: Quá mua | %K < 20: Quá bán
@@ -420,7 +416,7 @@ class TechnicalIndicatorsTool(BaseTool):
         window = kwargs.get("window", self.DEFAULTS["stoch_window"])
         smooth = kwargs.get("smooth", self.DEFAULTS["stoch_smooth"])
         last_n = kwargs.get("last_n")
-        df = await self._fetch_price_df(symbol, kwargs.get("start"), kwargs.get("end"))
+        df = self._fetch_price_df(symbol, kwargs.get("start"), kwargs.get("end"))
 
         stoch = StochasticOscillator(
             high=df["high"], low=df["low"], close=df["close"],
@@ -472,7 +468,7 @@ class TechnicalIndicatorsTool(BaseTool):
         return " | ".join(parts)
 
 
-    async def _get_atr(self, symbol: str, **kwargs) -> Dict[str, Any]:
+    def _get_atr(self, symbol: str, **kwargs) -> Dict[str, Any]:
         """
         ATR - Biên độ dao động trung bình.
         ATR cao → Biến động lớn | ATR thấp → Ít biến động
@@ -480,7 +476,7 @@ class TechnicalIndicatorsTool(BaseTool):
         """
         window = kwargs.get("window", self.DEFAULTS["atr_window"])
         last_n = kwargs.get("last_n")
-        df = await self._fetch_price_df(symbol, kwargs.get("start"), kwargs.get("end"))
+        df = self._fetch_price_df(symbol, kwargs.get("start"), kwargs.get("end"))
 
         atr = AverageTrueRange(high=df["high"], low=df["low"], close=df["close"], window=window)
         df["atr"] = atr.average_true_range()
@@ -522,10 +518,10 @@ class TechnicalIndicatorsTool(BaseTool):
         return f"Biến động thấp ({atr_pct}%)"
 
 
-    async def _get_all_indicators(self, symbol: str, **kwargs) -> Dict[str, Any]:
+    def _get_all_indicators(self, symbol: str, **kwargs) -> Dict[str, Any]:
         """Tính toán tất cả chỉ báo kỹ thuật trên cùng 1 bộ dữ liệu."""
         last_n = kwargs.get("last_n", 30)
-        df = await self._fetch_price_df(symbol, kwargs.get("start"), kwargs.get("end"))
+        df = self._fetch_price_df(symbol, kwargs.get("start"), kwargs.get("end"))
 
         # RSI
         rsi_w = kwargs.get("rsi_window", self.DEFAULTS["rsi_window"])
@@ -603,9 +599,9 @@ class TechnicalIndicatorsTool(BaseTool):
         }
 
 
-    async def _get_summary(self, symbol: str, **kwargs) -> Dict[str, Any]:
+    def _get_summary(self, symbol: str, **kwargs) -> Dict[str, Any]:
         """Trả về snapshot giá trị mới nhất của mọi chỉ báo + đánh giá tổng hợp."""
-        df = await self._fetch_price_df(symbol, kwargs.get("start"), kwargs.get("end"))
+        df = self._fetch_price_df(symbol, kwargs.get("start"), kwargs.get("end"))
 
         r = self._safe_round
 

@@ -47,7 +47,7 @@ class TradingSignalsTool(BaseTool):
         }
 
 
-    async def run(self, action: str = "all", symbol: str = "", **kwargs) -> Dict[str, Any]:
+    def run(self, action: str = "all", symbol: str = "", **kwargs) -> Dict[str, Any]:
         """
         Args:
             action: Loại tín hiệu
@@ -78,7 +78,7 @@ class TradingSignalsTool(BaseTool):
         if not symbol:
             return {"success": False, "error": "Symbol không được để trống"}
         try:
-            return await action_map[action](symbol, **kwargs)
+            return action_map[action](symbol, **kwargs)
         except Exception as e:
             return {"success": False, "error": str(e)}
 
@@ -86,11 +86,11 @@ class TradingSignalsTool(BaseTool):
     # Helpers
     # ===================================================================
 
-    async def _fetch_price_df(
+    def _fetch_price_df(
         self, symbol: str, start: Optional[str] = None, end: Optional[str] = None
     ) -> pd.DataFrame:
         """Lấy lịch sử giá và trả về DataFrame chuẩn."""
-        result = await self._data_tool.get_stock_price(symbol, start=start, end=end)
+        result = self._data_tool.get_stock_price(symbol, start=start, end=end)
         if not result.get("success"):
             raise ValueError(result.get("error", "Không lấy được dữ liệu giá"))
 
@@ -156,14 +156,14 @@ class TradingSignalsTool(BaseTool):
     # 1. RSI SIGNALS
     # ===================================================================
 
-    async def _get_rsi_signals(self, symbol: str, **kwargs) -> Dict[str, Any]:
+    def _get_rsi_signals(self, symbol: str, **kwargs) -> Dict[str, Any]:
         """
         Phát hiện tín hiệu RSI:
         - Vào vùng quá mua (>70) / quá bán (<30)
         - RSI divergence (phân kỳ giá-RSI)
         """
         lookback = kwargs.get("lookback", 20)
-        df = await self._fetch_price_df(symbol, kwargs.get("start"), kwargs.get("end"))
+        df = self._fetch_price_df(symbol, kwargs.get("start"), kwargs.get("end"))
 
         rsi = RSIIndicator(close=df["close"], window=14)
         df["rsi"] = rsi.rsi()
@@ -269,7 +269,7 @@ class TradingSignalsTool(BaseTool):
     # 2. MACD SIGNALS
     # ===================================================================
 
-    async def _get_macd_signals(self, symbol: str, **kwargs) -> Dict[str, Any]:
+    def _get_macd_signals(self, symbol: str, **kwargs) -> Dict[str, Any]:
         """
         Phát hiện MACD crossover:
         - Bullish: MACD cắt lên Signal Line
@@ -277,7 +277,7 @@ class TradingSignalsTool(BaseTool):
         - Zero-line crossover
         """
         lookback = kwargs.get("lookback", 30)
-        df = await self._fetch_price_df(symbol, kwargs.get("start"), kwargs.get("end"))
+        df = self._fetch_price_df(symbol, kwargs.get("start"), kwargs.get("end"))
 
         macd = MACD(close=df["close"], window_fast=12, window_slow=26, window_sign=9)
         df["macd"] = macd.macd()
@@ -361,7 +361,7 @@ class TradingSignalsTool(BaseTool):
     # 3. MA CROSS SIGNALS (Golden Cross / Death Cross)
     # ===================================================================
 
-    async def _get_ma_cross_signals(self, symbol: str, **kwargs) -> Dict[str, Any]:
+    def _get_ma_cross_signals(self, symbol: str, **kwargs) -> Dict[str, Any]:
         """
         Phát hiện Golden Cross / Death Cross:
         - Golden Cross: SMA50 cắt lên SMA200 → Bullish dài hạn
@@ -369,7 +369,7 @@ class TradingSignalsTool(BaseTool):
         - EMA crossovers: EMA9 vs EMA21 (ngắn hạn)
         """
         lookback = kwargs.get("lookback", 30)
-        df = await self._fetch_price_df(symbol, kwargs.get("start"), kwargs.get("end"))
+        df = self._fetch_price_df(symbol, kwargs.get("start"), kwargs.get("end"))
 
         # SMA 20, 50, 200
         for w in [20, 50, 200]:
@@ -449,7 +449,7 @@ class TradingSignalsTool(BaseTool):
     # 4. SUPPORT / RESISTANCE
     # ===================================================================
 
-    async def _get_support_resistance(self, symbol: str, **kwargs) -> Dict[str, Any]:
+    def _get_support_resistance(self, symbol: str, **kwargs) -> Dict[str, Any]:
         """
         Tính toán vùng hỗ trợ / kháng cự:
         - Pivot Points (Classic)
@@ -457,7 +457,7 @@ class TradingSignalsTool(BaseTool):
         - Bollinger Bands làm S/R động
         """
         lookback = kwargs.get("lookback", 60)
-        df = await self._fetch_price_df(symbol, kwargs.get("start"), kwargs.get("end"))
+        df = self._fetch_price_df(symbol, kwargs.get("start"), kwargs.get("end"))
         scan = df.tail(lookback).reset_index(drop=True)
 
         close = scan["close"].iloc[-1]
@@ -560,7 +560,7 @@ class TradingSignalsTool(BaseTool):
     # 5. TREND DETECTION
     # ===================================================================
 
-    async def _get_trend(self, symbol: str, **kwargs) -> Dict[str, Any]:
+    def _get_trend(self, symbol: str, **kwargs) -> Dict[str, Any]:
         """
         Phát hiện xu hướng:
         - Ngắn hạn (5-20 phiên): EMA9 vs EMA21
@@ -568,7 +568,7 @@ class TradingSignalsTool(BaseTool):
         - Dài hạn (>60 phiên): SMA50 vs SMA200
         - ADX (Average Directional Index) cho sức mạnh xu hướng
         """
-        df = await self._fetch_price_df(symbol, kwargs.get("start"), kwargs.get("end"))
+        df = self._fetch_price_df(symbol, kwargs.get("start"), kwargs.get("end"))
 
         # Thêm MAs
         for w in [9, 21, 50, 200]:
@@ -679,15 +679,15 @@ class TradingSignalsTool(BaseTool):
     # 6. ALL SIGNALS
     # ===================================================================
 
-    async def _get_all_signals(self, symbol: str, **kwargs) -> Dict[str, Any]:
+    def _get_all_signals(self, symbol: str, **kwargs) -> Dict[str, Any]:
         """Tổng hợp tất cả tín hiệu."""
         lookback = kwargs.get("lookback", 20)
 
-        rsi_result = await self._get_rsi_signals(symbol, **kwargs)
-        macd_result = await self._get_macd_signals(symbol, **kwargs)
-        ma_result = await self._get_ma_cross_signals(symbol, **kwargs)
-        sr_result = await self._get_support_resistance(symbol, **kwargs)
-        trend_result = await self._get_trend(symbol, **kwargs)
+        rsi_result = self._get_rsi_signals(symbol, **kwargs)
+        macd_result = self._get_macd_signals(symbol, **kwargs)
+        ma_result = self._get_ma_cross_signals(symbol, **kwargs)
+        sr_result = self._get_support_resistance(symbol, **kwargs)
+        trend_result = self._get_trend(symbol, **kwargs)
 
         # Gom tất cả tín hiệu theo ngày
         all_signals = []
@@ -713,12 +713,12 @@ class TradingSignalsTool(BaseTool):
     # 7. RECOMMENDATION (Khuyến nghị tổng hợp)
     # ===================================================================
 
-    async def _get_recommendation(self, symbol: str, **kwargs) -> Dict[str, Any]:
+    def _get_recommendation(self, symbol: str, **kwargs) -> Dict[str, Any]:
         """
         Khuyến nghị giao dịch dựa trên tổng hợp tất cả tín hiệu.
         Kết hợp: Trend + RSI + MACD + MA + Bollinger + Stochastic + S/R
         """
-        df = await self._fetch_price_df(symbol, kwargs.get("start"), kwargs.get("end"))
+        df = self._fetch_price_df(symbol, kwargs.get("start"), kwargs.get("end"))
         df = self._add_indicators(df)
         close = df["close"].iloc[-1]
 

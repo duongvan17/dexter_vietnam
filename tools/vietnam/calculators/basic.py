@@ -34,8 +34,62 @@ class CalculatorsTool(BaseTool):
             "dca": "Tính DCA (Dollar Cost Averaging): giá vốn bình quân",
         }
 
+    def get_parameters_schema(self) -> dict:
+        return {
+            "compound_interest": {
+                "properties": {
+                    "principal": {"type": "number", "description": "Số tiền gốc (VND)"},
+                    "annual_rate": {"type": "number", "description": "Lãi suất năm (VD: 0.10 = 10%)"},
+                    "years": {"type": "integer", "description": "Số năm đầu tư"},
+                    "monthly_contribution": {"type": "number", "description": "Số tiền đóng thêm mỗi tháng (VND, mặc định 0)"},
+                },
+                "required": ["principal", "annual_rate", "years"],
+            },
+            "position_sizing": {
+                "properties": {
+                    "account_size": {"type": "number", "description": "Tổng vốn tài khoản (VND)"},
+                    "risk_percent": {"type": "number", "description": "% rủi ro chấp nhận (VD: 0.02 = 2%)"},
+                    "entry_price": {"type": "number", "description": "Giá vào lệnh"},
+                    "stop_loss_price": {"type": "number", "description": "Giá stop-loss"},
+                },
+                "required": ["account_size", "risk_percent", "entry_price", "stop_loss_price"],
+            },
+            "tax": {
+                "properties": {
+                    "buy_price": {"type": "number", "description": "Giá mua (VND/CP)"},
+                    "sell_price": {"type": "number", "description": "Giá bán (VND/CP)"},
+                    "quantity": {"type": "integer", "description": "Số lượng cổ phiếu"},
+                },
+                "required": ["buy_price", "sell_price", "quantity"],
+            },
+            "breakeven": {
+                "properties": {
+                    "buy_price": {"type": "number", "description": "Giá mua (VND/CP)"},
+                    "quantity": {"type": "integer", "description": "Số lượng cổ phiếu"},
+                },
+                "required": ["buy_price", "quantity"],
+            },
+            "margin": {
+                "properties": {
+                    "equity": {"type": "number", "description": "Vốn tự có (VND)"},
+                    "loan": {"type": "number", "description": "Số tiền vay margin (VND)"},
+                    "stock_value": {"type": "number", "description": "Giá trị cổ phiếu hiện tại (VND)"},
+                },
+                "required": ["equity", "loan", "stock_value"],
+            },
+            "dca": {
+                "properties": {
+                    "purchases": {
+                        "type": "string",
+                        "description": "Danh sách mua dạng JSON: [{\"price\": 50000, \"quantity\": 100}, ...]",
+                    },
+                },
+                "required": ["purchases"],
+            },
+        }
 
-    async def run(self, action: str = "compound_interest", **kwargs) -> Dict[str, Any]:
+
+    def run(self, action: str = "compound_interest", **kwargs) -> Dict[str, Any]:
 
         action_map = {
             "compound_interest": self.calculate_compound_interest,
@@ -54,13 +108,13 @@ class CalculatorsTool(BaseTool):
             }
 
         try:
-            return await action_map[action](**kwargs)
+            return action_map[action](**kwargs)
         except Exception as e:
             logger.error(f"Calculator '{action}' failed: {e}", exc_info=True)
             return {"success": False, "error": f"Lỗi tính toán: {str(e)}"}
 
 
-    async def calculate_compound_interest(
+    def calculate_compound_interest(
         self,
         principal: float = 100_000_000,
         annual_rate: float = 0.10,
@@ -131,7 +185,7 @@ class CalculatorsTool(BaseTool):
         }
 
 
-    async def calculate_position_sizing(
+    def calculate_position_sizing(
         self,
         capital: float = 100_000_000,
         risk_percent: float = 2.0,
@@ -214,7 +268,7 @@ class CalculatorsTool(BaseTool):
             ),
         }
 
-    async def calculate_tax(
+    def calculate_tax(
         self,
         buy_price: float = 50.0,
         sell_price: float = 55.0,
@@ -271,7 +325,7 @@ class CalculatorsTool(BaseTool):
         }
 
 
-    async def calculate_breakeven(
+    def calculate_breakeven(
         self,
         buy_price: float = 50.0,
         quantity: int = 1000,
@@ -333,7 +387,7 @@ class CalculatorsTool(BaseTool):
             ),
         }
 
-    async def calculate_margin(
+    def calculate_margin(
         self,
         equity: float = 100_000_000,
         margin_ratio: float = 50.0,
@@ -425,7 +479,7 @@ class CalculatorsTool(BaseTool):
             ),
         }
 
-    async def calculate_dca(
+    def calculate_dca(
         self,
         symbol: str = "",
         monthly_amount: float = 5_000_000,

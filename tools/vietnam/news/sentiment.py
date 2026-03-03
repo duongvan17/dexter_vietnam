@@ -59,8 +59,33 @@ class SentimentAnalysisTool(BaseTool):
             "analyze_text": "Phân tích sentiment của 1 URL bài báo cụ thể",
         }
 
+    def get_parameters_schema(self) -> dict:
+        symbol_param = {
+            "properties": {
+                "symbol": {
+                    "type": "string",
+                    "description": "Mã cổ phiếu (VD: FPT, VNM)",
+                }
+            },
+            "required": ["symbol"],
+        }
+        return {
+            "analyze": symbol_param,
+            "stock_sentiment": symbol_param,
+            "market_sentiment": {"properties": {}, "required": []},
+            "analyze_text": {
+                "properties": {
+                    "url": {
+                        "type": "string",
+                        "description": "URL bài báo cần phân tích sentiment",
+                    }
+                },
+                "required": ["url"],
+            },
+        }
 
-    async def run(self, symbol: str = "", action: str = "analyze", **kwargs) -> Dict[str, Any]:
+
+    def run(self, symbol: str = "", action: str = "analyze", **kwargs) -> Dict[str, Any]:
  
         action_map = {
             "analyze": self._analyze_article,
@@ -71,12 +96,12 @@ class SentimentAnalysisTool(BaseTool):
         if action not in action_map:
             return {"success": False, "error": f"Action không hợp lệ: {action}"}
         try:
-            return await action_map[action](symbol, **kwargs)
+            return action_map[action](symbol, **kwargs)
         except Exception as e:
             return {"success": False, "error": str(e)}
 
 
-    async def _analyze_article(self, symbol: str = "", **kwargs) -> Dict[str, Any]:
+    def _analyze_article(self, symbol: str = "", **kwargs) -> Dict[str, Any]:
         """
         Phân tích sentiment của bài viết.
         - Nếu có URL: phân tích bài viết đó
@@ -88,12 +113,12 @@ class SentimentAnalysisTool(BaseTool):
         if not url:
             if symbol:
                 logger.info(f"No URL provided, auto-switching to stock_sentiment for {symbol}")
-                return await self._stock_sentiment(symbol, **kwargs)
+                return self._stock_sentiment(symbol, **kwargs)
             else:
                 return {"success": False, "error": "Cần cung cấp URL bài viết hoặc mã cổ phiếu (symbol)"}
 
         # Lấy nội dung bài viết từ URL
-        article = await self._news_tool.get_article_content(url)
+        article = self._news_tool.get_article_content(url)
         if not article.get("success"):
             return article
 
@@ -102,7 +127,7 @@ class SentimentAnalysisTool(BaseTool):
         full_text = f"{title}\n{content}"
 
         # Phân tích sentiment
-        result = await self._do_sentiment(full_text, title=title)
+        result = self._do_sentiment(full_text, title=title)
 
         return {
             "success": True,
@@ -113,7 +138,7 @@ class SentimentAnalysisTool(BaseTool):
         }
 
 
-    async def _analyze_text(self, symbol: str = "", **kwargs) -> Dict[str, Any]:
+    def _analyze_text(self, symbol: str = "", **kwargs) -> Dict[str, Any]:
         """Phân tích sentiment từ text trực tiếp."""
         text = kwargs.get("text", "")
         title = kwargs.get("title", "")
@@ -121,7 +146,7 @@ class SentimentAnalysisTool(BaseTool):
             return {"success": False, "error": "Cần cung cấp text để phân tích"}
 
         full_text = f"{title}\n{text}" if title else text
-        result = await self._do_sentiment(full_text, title=title)
+        result = self._do_sentiment(full_text, title=title)
 
         return {
             "success": True,
@@ -132,7 +157,7 @@ class SentimentAnalysisTool(BaseTool):
         }
 
 
-    async def _stock_sentiment(self, symbol: str, **kwargs) -> Dict[str, Any]:
+    def _stock_sentiment(self, symbol: str, **kwargs) -> Dict[str, Any]:
         """Lấy tin RSS + phân tích sentiment tổng hợp cho 1 mã."""
         if not symbol:
             return {"success": False, "error": "Cần cung cấp mã cổ phiếu (symbol)"}
@@ -140,7 +165,7 @@ class SentimentAnalysisTool(BaseTool):
         limit = kwargs.get("limit", 5)
         source = kwargs.get("source", "all")
 
-        news_result = await self._news_tool.run(
+        news_result = self._news_tool.run(
             symbol=symbol, action="stock_news", limit=limit, source=source
         )
         if not news_result.get("success"):
@@ -160,7 +185,7 @@ class SentimentAnalysisTool(BaseTool):
         for article in articles:
             text = f"{article.get('title', '')} {article.get('summary', '')}"
             if text.strip():
-                result = await self._do_sentiment(text, title=article.get("title", ""))
+                result = self._do_sentiment(text, title=article.get("title", ""))
                 sentiments.append({
                     "title":     article.get("title", ""),
                     "url":       article.get("url", ""),
@@ -181,12 +206,12 @@ class SentimentAnalysisTool(BaseTool):
         }
 
 
-    async def _market_sentiment(self, symbol: str = "", **kwargs) -> Dict[str, Any]:
+    def _market_sentiment(self, symbol: str = "", **kwargs) -> Dict[str, Any]:
         """Phân tích tâm lý thị trường chung dựa trên RSS."""
         limit  = kwargs.get("limit", 10)
         source = kwargs.get("source", "all")
 
-        news_result = await self._news_tool.run(
+        news_result = self._news_tool.run(
             action="market", limit=limit, source=source
         )
         if not news_result.get("success"):
@@ -205,7 +230,7 @@ class SentimentAnalysisTool(BaseTool):
         for article in articles:
             text = f"{article.get('title', '')} {article.get('summary', '')}"
             if text.strip():
-                result = await self._do_sentiment(text, title=article.get("title", ""))
+                result = self._do_sentiment(text, title=article.get("title", ""))
                 sentiments.append({
                     "title":     article.get("title", ""),
                     "source":    article.get("source", ""),
@@ -225,19 +250,19 @@ class SentimentAnalysisTool(BaseTool):
 
 
 
-    async def _do_sentiment(self, text: str, title: str = "") -> Dict[str, Any]:
+    def _do_sentiment(self, text: str, title: str = "") -> Dict[str, Any]:
 
         # Thử LLM trước
         if self._llm is not None:
             try:
-                return await self._llm_sentiment(text, title)
+                return self._llm_sentiment(text, title)
             except Exception as e:
                 logger.warning(f"LLM sentiment failed, fallback to keyword: {e}")
 
         # Keyword-based fallback
         return self._keyword_sentiment(text)
 
-    async def _llm_sentiment(self, text: str, title: str = "") -> Dict[str, Any]:
+    def _llm_sentiment(self, text: str, title: str = "") -> Dict[str, Any]:
         """Phân tích sentiment bằng LLM."""
         system_prompt = """Bạn là chuyên gia phân tích tâm lý tin tức chứng khoán Việt Nam.
 Phân tích bài viết sau và trả về JSON với format:
@@ -251,7 +276,7 @@ Chỉ trả về JSON, không thêm gì khác."""
 
         prompt = f"Tiêu đề: {title}\n\nNội dung:\n{text[:3000]}"
 
-        result = await self._llm.generate_json(prompt=prompt, system_prompt=system_prompt)
+        result = self._llm.generate_json(prompt=prompt, system_prompt=system_prompt)
 
         if isinstance(result, dict) and "sentiment" in result:
             result["method"] = "llm"

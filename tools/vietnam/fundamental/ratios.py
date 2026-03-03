@@ -45,7 +45,7 @@ class FinancialRatiosTool(BaseTool):
         }
 
 
-    async def run(self, action: str = "all", symbol: str = "", **kwargs) -> Dict[str, Any]:
+    def run(self, action: str = "all", symbol: str = "", **kwargs) -> Dict[str, Any]:
 
         action_map = {
             'all': self.get_all_ratios,
@@ -61,14 +61,14 @@ class FinancialRatiosTool(BaseTool):
         if not symbol:
             return {"success": False, "error": "Symbol không được để trống"}
         try:
-            return await action_map[action](symbol, **kwargs)
+            return action_map[action](symbol, **kwargs)
         except Exception as e:
             return {"success": False, "error": str(e)}
 
 
-    async def _fetch_ratios(self, symbol: str, period: str = 'quarter') -> List[Dict]:
+    def _fetch_ratios(self, symbol: str, period: str = 'quarter') -> List[Dict]:
         """Lấy raw ratios từ vnstock (đã có MultiIndex)."""
-        result = await self._data_tool.get_financial_ratio(symbol, period)
+        result = self._data_tool.get_financial_ratio(symbol, period)
         if not result.get("success"):
             raise ValueError(result.get("error", "Không lấy được chỉ số tài chính"))
         return result["data"]
@@ -122,9 +122,9 @@ class FinancialRatiosTool(BaseTool):
                 return f"Thấp (<{thresholds[keys[1]]})"
 
 
-    async def get_all_ratios(self, symbol: str, **_) -> Dict[str, Any]:
+    def get_all_ratios(self, symbol: str, **_) -> Dict[str, Any]:
         """Trả về tất cả chỉ số + đánh giá cho năm gần nhất."""
-        raw_list = await self._fetch_ratios(symbol)
+        raw_list = self._fetch_ratios(symbol)
         if not raw_list:
             return {"success": False, "error": "Không có dữ liệu"}
 
@@ -186,8 +186,8 @@ class FinancialRatiosTool(BaseTool):
         }
 
 
-    async def get_valuation_ratios(self, symbol: str, **_) -> Dict[str, Any]:
-        result = await self.get_all_ratios(symbol)
+    def get_valuation_ratios(self, symbol: str, **_) -> Dict[str, Any]:
+        result = self.get_all_ratios(symbol)
         if not result.get("success"):
             return result
         return {
@@ -198,8 +198,8 @@ class FinancialRatiosTool(BaseTool):
             "year": result["data"]["year"],
         }
 
-    async def get_profitability_ratios(self, symbol: str, **_) -> Dict[str, Any]:
-        result = await self.get_all_ratios(symbol)
+    def get_profitability_ratios(self, symbol: str, **_) -> Dict[str, Any]:
+        result = self.get_all_ratios(symbol)
         if not result.get("success"):
             return result
         return {
@@ -210,8 +210,8 @@ class FinancialRatiosTool(BaseTool):
             "year": result["data"]["year"],
         }
 
-    async def get_liquidity_ratios(self, symbol: str, **_) -> Dict[str, Any]:
-        result = await self.get_all_ratios(symbol)
+    def get_liquidity_ratios(self, symbol: str, **_) -> Dict[str, Any]:
+        result = self.get_all_ratios(symbol)
         if not result.get("success"):
             return result
         return {
@@ -222,8 +222,8 @@ class FinancialRatiosTool(BaseTool):
             "year": result["data"]["year"],
         }
 
-    async def get_leverage_ratios(self, symbol: str, **_) -> Dict[str, Any]:
-        result = await self.get_all_ratios(symbol)
+    def get_leverage_ratios(self, symbol: str, **_) -> Dict[str, Any]:
+        result = self.get_all_ratios(symbol)
         if not result.get("success"):
             return result
         return {
@@ -234,8 +234,8 @@ class FinancialRatiosTool(BaseTool):
             "year": result["data"]["year"],
         }
 
-    async def get_per_share_ratios(self, symbol: str, **_) -> Dict[str, Any]:
-        result = await self.get_all_ratios(symbol)
+    def get_per_share_ratios(self, symbol: str, **_) -> Dict[str, Any]:
+        result = self.get_all_ratios(symbol)
         if not result.get("success"):
             return result
         return {
@@ -247,11 +247,11 @@ class FinancialRatiosTool(BaseTool):
         }
 
 
-    async def get_ratio_comparison(
+    def get_ratio_comparison(
         self, symbol: str, years: int = 3, **_
     ) -> Dict[str, Any]:
         """So sánh chỉ số tài chính qua các năm."""
-        raw_list = await self._fetch_ratios(symbol)
+        raw_list = self._fetch_ratios(symbol)
         if not raw_list:
             return {"success": False, "error": "Không có dữ liệu"}
 
@@ -297,12 +297,12 @@ class FinancialRatiosTool(BaseTool):
         }
 
 
-    async def calculate_from_statements(
+    def calculate_from_statements(
         self, symbol: str, market_price: Optional[float] = None, **_
     ) -> Dict[str, Any]:
  
         # Lấy BCTC
-        summary = await self._fs_tool.get_financial_summary(symbol)
+        summary = self._fs_tool.get_financial_summary(symbol)
         if not summary.get("success"):
             return summary
 
@@ -311,7 +311,7 @@ class FinancialRatiosTool(BaseTool):
 
         # Lấy giá thị trường nếu chưa có
         if market_price is None:
-            price_result = await self._data_tool.get_stock_price(symbol)
+            price_result = self._data_tool.get_stock_price(symbol)
             if price_result.get("success") and price_result["data"]:
                 market_price = price_result["data"][-1].get("close", 0) * 1000  # về đồng
             else:

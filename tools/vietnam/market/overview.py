@@ -80,8 +80,27 @@ class MarketOverviewTool(BaseTool):
             "macro": "Chỉ số vĩ mô: lãi suất, tỷ giá USD/VND, giá vàng SJC, GDP/CPI",
         }
 
+    def get_parameters_schema(self) -> dict:
+        no_param = {"properties": {}, "required": []}
+        return {
+            "summary": no_param,
+            "status": no_param,
+            "index": {
+                "properties": {
+                    "symbol": {
+                        "type": "string",
+                        "description": "Mã chỉ số: VNINDEX, VN30, HNX, UPCOM (mặc định VNINDEX)",
+                    }
+                },
+                "required": [],
+            },
+            "sector": no_param,
+            "breadth": no_param,
+            "macro": no_param,
+        }
 
-    async def run(self, symbol: str = "", action: str = "status", **kwargs) -> Dict[str, Any]:
+
+    def run(self, symbol: str = "", action: str = "status", **kwargs) -> Dict[str, Any]:
  
         action_map = {
             "status": self._market_status,
@@ -98,7 +117,7 @@ class MarketOverviewTool(BaseTool):
                          f"Sử dụng: {list(action_map.keys())}",
             }
         try:
-            return await action_map[action](symbol=symbol, **kwargs)
+            return action_map[action](symbol=symbol, **kwargs)
         except Exception as e:
             return {"success": False, "error": str(e)}
 
@@ -114,12 +133,12 @@ class MarketOverviewTool(BaseTool):
         except (TypeError, ValueError):
             return val
 
-    async def _get_index_snapshot(self, index_code: str, days: int = 5) -> Dict[str, Any]:
+    def _get_index_snapshot(self, index_code: str, days: int = 5) -> Dict[str, Any]:
         """Lấy snapshot nhanh cho 1 chỉ số."""
         end = datetime.now().strftime("%Y-%m-%d")
         start = (datetime.now() - timedelta(days=max(days, 10))).strftime("%Y-%m-%d")
 
-        result = await self._data_tool.get_market_index(index_code, start=start, end=end)
+        result = self._data_tool.get_market_index(index_code, start=start, end=end)
         if not result.get("success") or not result.get("data"):
             return {"index": index_code, "error": "Không lấy được dữ liệu"}
 
@@ -162,13 +181,13 @@ class MarketOverviewTool(BaseTool):
             "trend": "🟢 Tăng" if change > 0 else ("🔴 Giảm" if change < 0 else "⚪ Đi ngang"),
         }
 
-    async def _get_stock_change(self, symbol: str, days: int = 5) -> Optional[Dict[str, Any]]:
+    def _get_stock_change(self, symbol: str, days: int = 5) -> Optional[Dict[str, Any]]:
         """Lấy thay đổi giá 1 mã."""
         try:
             end = datetime.now().strftime("%Y-%m-%d")
             start = (datetime.now() - timedelta(days=max(days + 5, 15))).strftime("%Y-%m-%d")
 
-            result = await self._data_tool.get_stock_price(symbol, start=start, end=end)
+            result = self._data_tool.get_stock_price(symbol, start=start, end=end)
             if not result.get("success") or not result.get("data"):
                 return None
 
@@ -206,19 +225,19 @@ class MarketOverviewTool(BaseTool):
             return None
 
 
-    async def _market_status(self, **kwargs) -> Dict[str, Any]:
+    def _market_status(self, **kwargs) -> Dict[str, Any]:
 
         top_n = kwargs.get("top_n", 10)
 
         # Lấy 3 chỉ số chính
         indices = {}
         for idx in ["VNINDEX", "HNX", "UPCOM"]:
-            indices[idx] = await self._get_index_snapshot(idx)
+            indices[idx] = self._get_index_snapshot(idx)
 
         # Scan top gainers / losers
         stock_changes = []
         for sym in self.TOP_SYMBOLS:
-            info = await self._get_stock_change(sym, days=1)
+            info = self._get_stock_change(sym, days=1)
             if info:
                 stock_changes.append(info)
 
@@ -268,7 +287,7 @@ class MarketOverviewTool(BaseTool):
         }
 
 
-    async def _index_detail(self, **kwargs) -> Dict[str, Any]:
+    def _index_detail(self, **kwargs) -> Dict[str, Any]:
 
         index_code = kwargs.get("symbol", "VNINDEX").upper()
         if index_code not in ["VNINDEX", "HNX", "UPCOM"]:
@@ -281,7 +300,7 @@ class MarketOverviewTool(BaseTool):
         end = datetime.now().strftime("%Y-%m-%d")
         start = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
 
-        result = await self._data_tool.get_market_index(index_code, start=start, end=end)
+        result = self._data_tool.get_market_index(index_code, start=start, end=end)
         if not result.get("success") or not result.get("data"):
             return {"success": False, "error": f"Không có dữ liệu {index_code}"}
 
@@ -350,7 +369,7 @@ class MarketOverviewTool(BaseTool):
         }
 
 
-    async def _sector_performance(self, **kwargs) -> Dict[str, Any]:
+    def _sector_performance(self, **kwargs) -> Dict[str, Any]:
 
         period = kwargs.get("period", "1d")
         period_days = {"1d": 5, "5d": 10, "1m": 35, "3m": 100}
@@ -361,7 +380,7 @@ class MarketOverviewTool(BaseTool):
         for sector_name, symbols in self.SECTOR_REPRESENTATIVES.items():
             changes = []
             for sym in symbols:
-                info = await self._get_stock_change(sym, days=days)
+                info = self._get_stock_change(sym, days=days)
                 if info:
                     # Dùng change_1d cho period 1d, change_nd cho period dài hơn
                     change = info.get("change_nd_pct") if period != "1d" else info.get("change_1d_pct")
@@ -424,7 +443,7 @@ class MarketOverviewTool(BaseTool):
         }
 
 
-    async def _macro_indicators(self, **kwargs) -> Dict[str, Any]:
+    def _macro_indicators(self, **kwargs) -> Dict[str, Any]:
  
         macro = {}
 
@@ -440,12 +459,12 @@ class MarketOverviewTool(BaseTool):
         }
 
         # --- Tỷ giá & Vàng (thử crawl) ---
-        fx_gold = await self._fetch_fx_gold()
+        fx_gold = self._fetch_fx_gold()
         macro["exchange_rate"] = fx_gold.get("exchange_rate", {"note": "Không lấy được"})
         macro["gold_price"] = fx_gold.get("gold_price", {"note": "Không lấy được"})
 
         # --- VNINDEX context ---
-        vni = await self._get_index_snapshot("VNINDEX", days=30)
+        vni = self._get_index_snapshot("VNINDEX", days=30)
         macro["vnindex"] = {
             "close": vni.get("close"),
             "change_pct": vni.get("change_pct"),
@@ -481,7 +500,7 @@ class MarketOverviewTool(BaseTool):
                           "Vui lòng kiểm tra nguồn chính thức (SBV, GSO, NHNN).",
         }
 
-    async def _fetch_fx_gold(self) -> Dict[str, Any]:
+    def _fetch_fx_gold(self) -> Dict[str, Any]:
         """Thử crawl tỷ giá và giá vàng."""
         result = {}
         if requests is None or BeautifulSoup is None:
@@ -532,13 +551,13 @@ class MarketOverviewTool(BaseTool):
         return result
 
 
-    async def _market_breadth(self, **kwargs) -> Dict[str, Any]:
+    def _market_breadth(self, **kwargs) -> Dict[str, Any]:
  
         universe = self.TOP_SYMBOLS
         stocks = []
 
         for sym in universe:
-            info = await self._get_stock_change(sym, days=1)
+            info = self._get_stock_change(sym, days=1)
             if info:
                 stocks.append(info)
 
@@ -591,12 +610,12 @@ class MarketOverviewTool(BaseTool):
         }
 
 
-    async def _market_summary(self, **kwargs) -> Dict[str, Any]:
+    def _market_summary(self, **kwargs) -> Dict[str, Any]:
 
         # Thu thập dữ liệu
-        status = await self._market_status(**kwargs)
-        sector = await self._sector_performance(**kwargs)
-        breadth = await self._market_breadth(**kwargs)
+        status = self._market_status(**kwargs)
+        sector = self._sector_performance(**kwargs)
+        breadth = self._market_breadth(**kwargs)
 
         # Chấm điểm tổng hợp (0-100, 50 = trung lập)
         score = 50

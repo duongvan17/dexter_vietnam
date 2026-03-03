@@ -32,8 +32,34 @@ class CompanyRiskTool(BaseTool):
             "portfolio": "Rủi ro danh mục đầu tư (cần danh sách symbols trong params)",
         }
 
+    def get_parameters_schema(self) -> dict:
+        symbol_param = {
+            "properties": {
+                "symbol": {
+                    "type": "string",
+                    "description": "Mã cổ phiếu (VD: FPT, VNM, HPG)",
+                }
+            },
+            "required": ["symbol"],
+        }
+        return {
+            "assessment": symbol_param,
+            "altman_z": symbol_param,
+            "liquidity": symbol_param,
+            "volatility": symbol_param,
+            "portfolio": {
+                "properties": {
+                    "symbols": {
+                        "type": "string",
+                        "description": "Danh sách mã cổ phiếu cách nhau bởi dấu phẩy (VD: FPT,VNM,HPG)",
+                    }
+                },
+                "required": ["symbols"],
+            },
+        }
 
-    async def run(self, symbol: str = "", action: str = "assessment", **kwargs) -> Dict[str, Any]:
+
+    def run(self, symbol: str = "", action: str = "assessment", **kwargs) -> Dict[str, Any]:
 
         action_map = {
             "assessment": self._overall_assessment,
@@ -48,7 +74,7 @@ class CompanyRiskTool(BaseTool):
         if action not in action_map:
             return {"success": False, "error": f"Action không hợp lệ: {action}"}
         try:
-            return await action_map[action](symbol, **kwargs)
+            return action_map[action](symbol, **kwargs)
         except Exception as e:
             return {"success": False, "error": str(e)}
 
@@ -61,9 +87,9 @@ class CompanyRiskTool(BaseTool):
         except (TypeError, ValueError):
             return val
 
-    async def _get_ratios_flat(self, symbol: str) -> Dict[str, Any]:
+    def _get_ratios_flat(self, symbol: str) -> Dict[str, Any]:
         """Lấy chỉ số tài chính dạng flat dict."""
-        result = await self._data_tool.get_financial_ratio(symbol)
+        result = self._data_tool.get_financial_ratio(symbol)
         if not result.get("success") or not result.get("data"):
             raise ValueError(f"Không lấy được chỉ số tài chính {symbol}")
         row = result["data"][0]
@@ -75,11 +101,11 @@ class CompanyRiskTool(BaseTool):
                 flat[key] = val
         return flat
 
-    async def _get_price_df(
+    def _get_price_df(
         self, symbol: str, start: Optional[str] = None, end: Optional[str] = None
     ) -> pd.DataFrame:
         """Lấy lịch sử giá."""
-        result = await self._data_tool.get_stock_price(symbol, start=start, end=end)
+        result = self._data_tool.get_stock_price(symbol, start=start, end=end)
         if not result.get("success"):
             raise ValueError(result.get("error", "Không lấy được dữ liệu giá"))
         df = pd.DataFrame(result["data"])
@@ -92,7 +118,7 @@ class CompanyRiskTool(BaseTool):
         return df
 
 
-    async def _altman_z_score(self, symbol: str, **kwargs) -> Dict[str, Any]:
+    def _altman_z_score(self, symbol: str, **kwargs) -> Dict[str, Any]:
 
         if not symbol:
             return {"success": False, "error": "Cần cung cấp mã cổ phiếu (symbol)"}
@@ -100,14 +126,14 @@ class CompanyRiskTool(BaseTool):
         r = self._safe_round
 
         # Lấy BCTC
-        summary = await self._fs_tool.get_financial_summary(symbol)
+        summary = self._fs_tool.get_financial_summary(symbol)
         if not summary.get("success"):
             return summary
         data = summary["data"]
 
         # Lấy chỉ số tài chính bổ sung
         try:
-            ratios = await self._get_ratios_flat(symbol)
+            ratios = self._get_ratios_flat(symbol)
         except Exception:
             ratios = {}
 
@@ -183,7 +209,7 @@ class CompanyRiskTool(BaseTool):
         }
 
 
-    async def _liquidity_risk(self, symbol: str, **kwargs) -> Dict[str, Any]:
+    def _liquidity_risk(self, symbol: str, **kwargs) -> Dict[str, Any]:
 
         if not symbol:
             return {"success": False, "error": "Cần cung cấp mã cổ phiếu (symbol)"}
@@ -192,7 +218,7 @@ class CompanyRiskTool(BaseTool):
 
         # Lấy chỉ số tài chính
         try:
-            ratios = await self._get_ratios_flat(symbol)
+            ratios = self._get_ratios_flat(symbol)
         except Exception as e:
             return {"success": False, "error": str(e)}
 
@@ -261,7 +287,7 @@ class CompanyRiskTool(BaseTool):
                 risk_score += 3
 
         # Volume Liquidity
-        volume_assess = await self._assess_volume_liquidity(symbol)
+        volume_assess = self._assess_volume_liquidity(symbol)
 
         # Tổng hợp
         max_risk = 9
@@ -290,10 +316,10 @@ class CompanyRiskTool(BaseTool):
             "overall": overall,
         }
 
-    async def _assess_volume_liquidity(self, symbol: str) -> Dict[str, Any]:
+    def _assess_volume_liquidity(self, symbol: str) -> Dict[str, Any]:
         """Đánh giá thanh khoản giao dịch (volume hàng ngày)."""
         try:
-            df = await self._get_price_df(symbol)
+            df = self._get_price_df(symbol)
             recent = df.tail(20)
 
             avg_volume = recent["volume"].mean()
@@ -322,13 +348,13 @@ class CompanyRiskTool(BaseTool):
             return {"assessment": "Không có dữ liệu volume"}
 
 
-    async def _volatility_risk(self, symbol: str, **kwargs) -> Dict[str, Any]:
+    def _volatility_risk(self, symbol: str, **kwargs) -> Dict[str, Any]:
 
         if not symbol:
             return {"success": False, "error": "Cần cung cấp mã cổ phiếu (symbol)"}
 
         r = self._safe_round
-        df = await self._get_price_df(symbol)
+        df = self._get_price_df(symbol)
         df["daily_return"] = df["close"].pct_change()
 
         # --- Daily & Annualized Volatility ---
@@ -348,7 +374,7 @@ class CompanyRiskTool(BaseTool):
                 vol_assess = "🟢 Biến động thấp (<20%)"
 
         # --- Beta (so với VNINDEX) ---
-        beta_result = await self._calculate_beta(symbol, df)
+        beta_result = self._calculate_beta(symbol, df)
 
         # --- Maximum Drawdown ---
         cummax = df["close"].cummax()
@@ -421,14 +447,14 @@ class CompanyRiskTool(BaseTool):
             },
         }
 
-    async def _calculate_beta(self, symbol: str, stock_df: pd.DataFrame) -> Dict[str, Any]:
+    def _calculate_beta(self, symbol: str, stock_df: pd.DataFrame) -> Dict[str, Any]:
         """Tính Beta so với VNINDEX."""
         try:
             # Lấy dữ liệu VNINDEX cùng khoảng thời gian
             start = stock_df["date"].iloc[0].strftime("%Y-%m-%d")
             end = stock_df["date"].iloc[-1].strftime("%Y-%m-%d")
 
-            index_result = await self._data_tool.get_market_index("VNINDEX", start=start, end=end)
+            index_result = self._data_tool.get_market_index("VNINDEX", start=start, end=end)
             if not index_result.get("success"):
                 return {"value": None, "assessment": "Không lấy được dữ liệu VNINDEX"}
 
@@ -482,7 +508,7 @@ class CompanyRiskTool(BaseTool):
             return {"value": None, "assessment": f"Lỗi tính Beta: {str(e)}"}
 
 
-    async def _portfolio_risk(self, symbol: str = "", **kwargs) -> Dict[str, Any]:
+    def _portfolio_risk(self, symbol: str = "", **kwargs) -> Dict[str, Any]:
 
         holdings = kwargs.get("holdings", [])
         if not holdings:
@@ -503,7 +529,7 @@ class CompanyRiskTool(BaseTool):
         for h in holdings:
             sym = h["symbol"]
             try:
-                df = await self._get_price_df(sym)
+                df = self._get_price_df(sym)
                 df["daily_return"] = df["close"].pct_change()
                 returns_dict[sym] = df.set_index("date")["daily_return"]
             except Exception:
@@ -616,7 +642,7 @@ class CompanyRiskTool(BaseTool):
         }
 
 
-    async def _overall_assessment(self, symbol: str, **kwargs) -> Dict[str, Any]:
+    def _overall_assessment(self, symbol: str, **kwargs) -> Dict[str, Any]:
 
         if not symbol:
             return {"success": False, "error": "Cần cung cấp mã cổ phiếu (symbol)"}
@@ -629,7 +655,7 @@ class CompanyRiskTool(BaseTool):
         max_points = 0
 
         # Z-Score
-        z_result = await self._altman_z_score(symbol)
+        z_result = self._altman_z_score(symbol)
         results["altman_z"] = z_result
         if z_result.get("success"):
             zone = z_result.get("zone", "")
@@ -642,7 +668,7 @@ class CompanyRiskTool(BaseTool):
             max_points += 4
 
         # Liquidity
-        liq_result = await self._liquidity_risk(symbol)
+        liq_result = self._liquidity_risk(symbol)
         results["liquidity"] = liq_result
         if liq_result.get("success"):
             liq_score = liq_result.get("risk_score", {}).get("value", 0)
@@ -650,7 +676,7 @@ class CompanyRiskTool(BaseTool):
             max_points += 4
 
         # Volatility
-        vol_result = await self._volatility_risk(symbol)
+        vol_result = self._volatility_risk(symbol)
         results["volatility"] = vol_result
         if vol_result.get("success"):
             annual_vol = vol_result.get("volatility", {}).get("annualized")

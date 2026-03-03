@@ -32,8 +32,29 @@ class MoneyFlowTool(BaseTool):
             "insider": "Giao dịch nội bộ: cổ đông lớn, HĐQT",
         }
 
+    def get_parameters_schema(self) -> dict:
+        symbol_param = {
+            "properties": {
+                "symbol": {
+                    "type": "string",
+                    "description": "Mã cổ phiếu (VD: FPT, VNM, HPG)",
+                }
+            },
+            "required": ["symbol"],
+        }
+        no_param = {"properties": {}, "required": []}
+        return {
+            "flow_analysis": symbol_param,
+            "foreign": symbol_param,
+            "foreign_history": symbol_param,
+            "top_foreign_buy": no_param,
+            "top_foreign_sell": no_param,
+            "proprietary": symbol_param,
+            "insider": symbol_param,
+        }
 
-    async def run(self, symbol: str = "", action: str = "foreign", **kwargs) -> Dict[str, Any]:
+
+    def run(self, symbol: str = "", action: str = "foreign", **kwargs) -> Dict[str, Any]:
 
         action_map = {
             "foreign": self._get_foreign_trading,
@@ -48,7 +69,7 @@ class MoneyFlowTool(BaseTool):
         if action not in action_map:
             return {"success": False, "error": f"Action không hợp lệ: {action}. Dùng: {list(action_map.keys())}"}
         try:
-            return await action_map[action](symbol, **kwargs)
+            return action_map[action](symbol, **kwargs)
         except Exception as e:
             return {"success": False, "error": str(e)}
 
@@ -71,11 +92,11 @@ class MoneyFlowTool(BaseTool):
                     record[key] = None
         return records
 
-    async def _fetch_price_data(
+    def _fetch_price_data(
         self, symbol: str, start: Optional[str] = None, end: Optional[str] = None
     ) -> pd.DataFrame:
         """Lấy dữ liệu giá (dùng cho phân tích volume & price action)."""
-        result = await self._data_tool.get_stock_price(symbol, start=start, end=end)
+        result = self._data_tool.get_stock_price(symbol, start=start, end=end)
         if not result.get("success"):
             raise ValueError(result.get("error", "Không lấy được dữ liệu giá"))
         df = pd.DataFrame(result["data"])
@@ -88,12 +109,12 @@ class MoneyFlowTool(BaseTool):
         return df
 
 
-    async def _get_foreign_trading(self, symbol: str, **kwargs) -> Dict[str, Any]:
+    def _get_foreign_trading(self, symbol: str, **kwargs) -> Dict[str, Any]:
 
         if not symbol:
             return {"success": False, "error": "Cần cung cấp mã cổ phiếu (symbol)"}
 
-        result = await self._data_tool.get_foreign_trading(symbol)
+        result = self._data_tool.get_foreign_trading(symbol)
         if not result.get("success"):
             return result
 
@@ -171,7 +192,7 @@ class MoneyFlowTool(BaseTool):
         return summary
 
 
-    async def _get_foreign_history(self, symbol: str, **kwargs) -> Dict[str, Any]:
+    def _get_foreign_history(self, symbol: str, **kwargs) -> Dict[str, Any]:
         """
         Phân tích lịch sử giao dịch khối ngoại theo thời gian.
         Kết hợp dữ liệu giá + volume để nhận diện xu hướng dòng tiền.
@@ -183,7 +204,7 @@ class MoneyFlowTool(BaseTool):
         end = kwargs.get("end")
 
         # Lấy dữ liệu giá (bao gồm volume)
-        df = await self._fetch_price_data(symbol, start, end)
+        df = self._fetch_price_data(symbol, start, end)
 
         # Phân tích volume trend
         df["volume_sma20"] = df["volume"].rolling(window=20).mean()
@@ -233,7 +254,7 @@ class MoneyFlowTool(BaseTool):
             })
 
         # Lấy thêm dữ liệu khối ngoại nếu có
-        foreign_result = await self._data_tool.get_foreign_trading(symbol)
+        foreign_result = self._data_tool.get_foreign_trading(symbol)
         foreign_data = None
         if foreign_result.get("success"):
             foreign_data = foreign_result.get("data")
@@ -260,7 +281,7 @@ class MoneyFlowTool(BaseTool):
         }
 
 
-    async def _get_top_foreign_buying(self, symbol: str = "", **kwargs) -> Dict[str, Any]:
+    def _get_top_foreign_buying(self, symbol: str = "", **kwargs) -> Dict[str, Any]:
         """
         Top N mã cổ phiếu khối ngoại mua ròng nhiều nhất.
         Scan các mã lớn trên HOSE để tìm dòng tiền ngoại.
@@ -278,7 +299,7 @@ class MoneyFlowTool(BaseTool):
         results = []
         for sym in major_symbols:
             try:
-                foreign_result = await self._data_tool.get_foreign_trading(sym)
+                foreign_result = self._data_tool.get_foreign_trading(sym)
                 if foreign_result.get("success"):
                     data = foreign_result.get("data", [])
                     summary = self._extract_foreign_net(sym, data)
@@ -301,7 +322,7 @@ class MoneyFlowTool(BaseTool):
         }
 
 
-    async def _get_top_foreign_selling(self, symbol: str = "", **kwargs) -> Dict[str, Any]:
+    def _get_top_foreign_selling(self, symbol: str = "", **kwargs) -> Dict[str, Any]:
         """Top N mã cổ phiếu khối ngoại bán ròng nhiều nhất."""
         top_n = kwargs.get("top_n", 10)
 
@@ -315,7 +336,7 @@ class MoneyFlowTool(BaseTool):
         results = []
         for sym in major_symbols:
             try:
-                foreign_result = await self._data_tool.get_foreign_trading(sym)
+                foreign_result = self._data_tool.get_foreign_trading(sym)
                 if foreign_result.get("success"):
                     data = foreign_result.get("data", [])
                     summary = self._extract_foreign_net(sym, data)
@@ -378,7 +399,7 @@ class MoneyFlowTool(BaseTool):
         }
 
 
-    async def _get_proprietary_trading(self, symbol: str, **kwargs) -> Dict[str, Any]:
+    def _get_proprietary_trading(self, symbol: str, **kwargs) -> Dict[str, Any]:
         """
         Giao dịch tự doanh của CTCK.
         Tự doanh mua ròng → CTCK kỳ vọng giá tăng.
@@ -421,17 +442,17 @@ class MoneyFlowTool(BaseTool):
                     }
 
             # Fallback: phân tích volume bất thường như proxy
-            return await self._proprietary_proxy(symbol, **kwargs)
+            return self._proprietary_proxy(symbol, **kwargs)
 
         except Exception as e:
-            return await self._proprietary_proxy(symbol, **kwargs)
+            return self._proprietary_proxy(symbol, **kwargs)
 
-    async def _proprietary_proxy(self, symbol: str, **kwargs) -> Dict[str, Any]:
+    def _proprietary_proxy(self, symbol: str, **kwargs) -> Dict[str, Any]:
         """
         Proxy phân tích tự doanh: phát hiện volume đột biến + biến động giá nhỏ
         (dấu hiệu của giao dịch tổ chức / block trade).
         """
-        df = await self._fetch_price_data(symbol)
+        df = self._fetch_price_data(symbol)
         df["volume_sma20"] = df["volume"].rolling(20).mean()
         df["volume_ratio"] = df["volume"] / df["volume_sma20"]
         df["price_change_pct"] = df["close"].pct_change().abs() * 100
@@ -462,7 +483,7 @@ class MoneyFlowTool(BaseTool):
         }
 
 
-    async def _get_insider_trading(self, symbol: str, **kwargs) -> Dict[str, Any]:
+    def _get_insider_trading(self, symbol: str, **kwargs) -> Dict[str, Any]:
         """
         Giao dịch nội bộ: cổ đông lớn, HĐQT, Ban Giám đốc.
         Nội bộ mua → Tin tưởng tương lai | Bán → Cần cảnh giác.
@@ -566,7 +587,7 @@ class MoneyFlowTool(BaseTool):
         }
 
 
-    async def _get_flow_analysis(self, symbol: str, **kwargs) -> Dict[str, Any]:
+    def _get_flow_analysis(self, symbol: str, **kwargs) -> Dict[str, Any]:
         """
         Phân tích dòng tiền tổng hợp cho 1 mã:
         - Volume trend (20 phiên)
@@ -578,7 +599,7 @@ class MoneyFlowTool(BaseTool):
         if not symbol:
             return {"success": False, "error": "Cần cung cấp mã cổ phiếu (symbol)"}
 
-        df = await self._fetch_price_data(symbol, kwargs.get("start"), kwargs.get("end"))
+        df = self._fetch_price_data(symbol, kwargs.get("start"), kwargs.get("end"))
 
         r = self._safe_round
 
@@ -650,7 +671,7 @@ class MoneyFlowTool(BaseTool):
         down_sessions = len(recent[recent["close"] < recent["open"]])
 
         # Khối ngoại
-        foreign = await self._data_tool.get_foreign_trading(symbol)
+        foreign = self._data_tool.get_foreign_trading(symbol)
         foreign_summary = None
         if foreign.get("success"):
             raw = foreign.get("data", [])

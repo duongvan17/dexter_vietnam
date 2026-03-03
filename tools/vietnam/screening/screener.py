@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 import math
 import pandas as pd
 import ta
-import asyncio
+import time
 import logging
 
 logger = logging.getLogger(__name__)
@@ -89,8 +89,36 @@ class StockScreenerTool(BaseTool):
             "custom": "Bộ lọc tuỳ chỉnh (truyền criteria trong params)",
         }
 
+    def get_parameters_schema(self) -> dict:
+        no_param = {"properties": {}, "required": []}
+        return {
+            "value": no_param,
+            "growth": no_param,
+            "oversold": no_param,
+            "overbought": no_param,
+            "industry": {
+                "properties": {
+                    "industry": {
+                        "type": "string",
+                        "description": "Tên ngành: ngan_hang, bat_dong_san, chung_khoan, thep, thuc_pham, dau_khi, cong_nghe, dien, hang_khong, bao_hiem, ban_le, duoc_pham",
+                    }
+                },
+                "required": ["industry"],
+            },
+            "dividend": no_param,
+            "custom": {
+                "properties": {
+                    "criteria": {
+                        "type": "string",
+                        "description": "Tiêu chí lọc tuỳ chỉnh (JSON string)",
+                    }
+                },
+                "required": [],
+            },
+        }
 
-    async def run(self, symbol: str = "", action: str = "value", **kwargs) -> Dict[str, Any]:
+
+    def run(self, symbol: str = "", action: str = "value", **kwargs) -> Dict[str, Any]:
 
         action_map = {
             "value": self._screen_value,
@@ -110,7 +138,7 @@ class StockScreenerTool(BaseTool):
                          f"Sử dụng: {list(action_map.keys())}",
             }
         try:
-            return await action_map[action](**kwargs)
+            return action_map[action](**kwargs)
         except Exception as e:
             return {"success": False, "error": str(e)}
 
@@ -188,7 +216,7 @@ class StockScreenerTool(BaseTool):
         
         return flat
 
-    async def _get_universe(self, kwargs: Dict) -> List[str]:
+    def _get_universe(self, kwargs: Dict) -> List[str]:
         """Lấy danh sách mã cần scan."""
         max_universe_size = kwargs.get("max_universe_size", 10)  # Giảm xuống 10 mã để tránh timeout
         
@@ -202,36 +230,36 @@ class StockScreenerTool(BaseTool):
         logger.info(f"🎯 Sẽ quét {len(limited_universe)} mã cổ phiếu")
         return limited_universe
 
-    async def _fetch_ratio_for_symbol(self, symbol: str, delay: float = 0.5) -> Optional[Dict[str, Any]]:
+    def _fetch_ratio_for_symbol(self, symbol: str, delay: float = 0.5) -> Optional[Dict[str, Any]]:
         """Lấy ratio mới nhất cho 1 mã từ FinancialRatiosTool với delay để tránh rate limit."""
         try:
             # Thêm delay nhỏ giữa các request để tránh rate limit
             if delay > 0:
-                await asyncio.sleep(delay)
+                time.sleep(delay)
             
-            result = await self._ratio_tool.run(action="all", symbol=symbol)
+            result = self._ratio_tool.run(action="all", symbol=symbol)
             if result.get("success") and result.get("data"):
                 logger.info(f"✓ Đã lấy dữ liệu tài chính cho {symbol}")
                 # Convert nested structure to flat structure
                 return self._convert_ratio_data(result["data"])
             else:
                 logger.warning(f"✗ Không có dữ liệu tài chính cho {symbol}")
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.warning(f"⏱ Timeout khi lấy dữ liệu {symbol}")
         except Exception as e:
             logger.warning(f"✗ Lỗi lấy dữ liệu {symbol}: {str(e)[:50]}")
         return None
 
-    async def _fetch_price_df(self, symbol: str, days: int = 100, delay: float = 0.5) -> Optional[pd.DataFrame]:
+    def _fetch_price_df(self, symbol: str, days: int = 100, delay: float = 0.5) -> Optional[pd.DataFrame]:
         """Lấy lịch sử giá gần nhất với delay để tránh rate limit."""
         try:
             # Thêm delay nhỏ giữa các request
             if delay > 0:
-                await asyncio.sleep(delay)
+                time.sleep(delay)
             
             end = datetime.now().strftime("%Y-%m-%d")
             start = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
-            result = await self._data_tool.get_stock_price(symbol, start=start, end=end)
+            result = self._data_tool.get_stock_price(symbol, start=start, end=end)
             if not result.get("success"):
                 logger.warning(f"✗ Không lấy được giá cho {symbol}")
                 return None
@@ -244,16 +272,16 @@ class StockScreenerTool(BaseTool):
             df = df.sort_values("date").reset_index(drop=True)
             logger.info(f"✓ Đã lấy lịch sử giá cho {symbol}")
             return df
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.warning(f"⏱ Timeout khi lấy giá {symbol}")
         except Exception as e:
             logger.warning(f"✗ Lỗi lấy giá {symbol}: {str(e)[:50]}")
         return None
 
-    async def _get_company_industry(self, symbol: str) -> Optional[str]:
+    def _get_company_industry(self, symbol: str) -> Optional[str]:
         """Lấy ngành của cổ phiếu."""
         try:
-            result = await self._data_tool.get_stock_overview(symbol)
+            result = self._data_tool.get_stock_overview(symbol)
             if result.get("success"):
                 data = result.get("data", {})
                 # Thử nhiều key phổ biến
@@ -267,7 +295,7 @@ class StockScreenerTool(BaseTool):
         return None
 
 
-    async def _screen_value(self, **kwargs) -> Dict[str, Any]:
+    def _screen_value(self, **kwargs) -> Dict[str, Any]:
 
         criteria = kwargs.get("criteria", {})
         max_pe = criteria.get("max_pe", 15)
@@ -276,13 +304,13 @@ class StockScreenerTool(BaseTool):
         max_de = criteria.get("max_de", 1.0)
         max_results = kwargs.get("max_results", 20)
 
-        universe = await self._get_universe(kwargs)
+        universe = self._get_universe(kwargs)
         matched = []
         scanned = 0
         errors = 0
 
         for sym in universe:
-            ratio = await self._fetch_ratio_for_symbol(sym)
+            ratio = self._fetch_ratio_for_symbol(sym)
             if ratio is None:
                 errors += 1
                 continue
@@ -373,7 +401,7 @@ class StockScreenerTool(BaseTool):
         return min(int(score), 100)
 
 
-    async def _screen_growth(self, **kwargs) -> Dict[str, Any]:
+    def _screen_growth(self, **kwargs) -> Dict[str, Any]:
 
         criteria = kwargs.get("criteria", {})
         min_revenue_growth = criteria.get("min_revenue_growth", 0.15)
@@ -381,7 +409,7 @@ class StockScreenerTool(BaseTool):
         min_roe = criteria.get("min_roe", 0.12)
         max_results = kwargs.get("max_results", 20)
 
-        universe = await self._get_universe(kwargs)
+        universe = self._get_universe(kwargs)
         matched = []
         scanned = 0
         errors = 0
@@ -389,7 +417,7 @@ class StockScreenerTool(BaseTool):
         for sym in universe:
             try:
                 # Lấy ratio với nhiều quý để so sánh
-                result = await self._ratio_tool.run(action="compare", symbol=sym, years=2)
+                result = self._ratio_tool.run(action="compare", symbol=sym, years=2)
                 if not result.get("success") or not result.get("data"):
                     errors += 1
                     continue
@@ -511,21 +539,21 @@ class StockScreenerTool(BaseTool):
 
         return min(int(score), 100)
 
-    async def _screen_oversold(self, **kwargs) -> Dict[str, Any]:
+    def _screen_oversold(self, **kwargs) -> Dict[str, Any]:
         """
         Lọc cổ phiếu bị bán quá mức (Oversold).
         RSI(14) < rsi_threshold (mặc định 30)
         """
         rsi_threshold = kwargs.get("rsi_threshold", 30)
         max_results = kwargs.get("max_results", 20)
-        universe = await self._get_universe(kwargs)
+        universe = self._get_universe(kwargs)
 
         matched = []
         scanned = 0
         errors = 0
 
         for sym in universe:
-            df = await self._fetch_price_df(sym, days=100)
+            df = self._fetch_price_df(sym, days=100)
             if df is None or len(df) < 20:
                 errors += 1
                 continue
@@ -572,21 +600,21 @@ class StockScreenerTool(BaseTool):
         }
 
 
-    async def _screen_overbought(self, **kwargs) -> Dict[str, Any]:
+    def _screen_overbought(self, **kwargs) -> Dict[str, Any]:
         """
         Lọc cổ phiếu bị mua quá mức (Overbought).
         RSI(14) > rsi_threshold (mặc định 70)
         """
         rsi_threshold = kwargs.get("rsi_threshold", 70)
         max_results = kwargs.get("max_results", 20)
-        universe = await self._get_universe(kwargs)
+        universe = self._get_universe(kwargs)
 
         matched = []
         scanned = 0
         errors = 0
 
         for sym in universe:
-            df = await self._fetch_price_df(sym, days=100)
+            df = self._fetch_price_df(sym, days=100)
             if df is None or len(df) < 20:
                 errors += 1
                 continue
@@ -631,7 +659,7 @@ class StockScreenerTool(BaseTool):
         }
 
 
-    async def _screen_industry(self, **kwargs) -> Dict[str, Any]:
+    def _screen_industry(self, **kwargs) -> Dict[str, Any]:
 
         industry = kwargs.get("industry", "")
         if not industry:
@@ -660,7 +688,7 @@ class StockScreenerTool(BaseTool):
 
         max_results = kwargs.get("max_results", 30)
         criteria = kwargs.get("criteria", {})
-        universe = await self._get_universe(kwargs)
+        universe = self._get_universe(kwargs)
 
         matched = []
         scanned = 0
@@ -668,7 +696,7 @@ class StockScreenerTool(BaseTool):
 
         for sym in universe:
             scanned += 1
-            sym_industry = await self._get_company_industry(sym)
+            sym_industry = self._get_company_industry(sym)
             if not sym_industry:
                 errors += 1
                 continue
@@ -681,7 +709,7 @@ class StockScreenerTool(BaseTool):
                 continue
 
             # Lấy thêm ratio
-            ratio = await self._fetch_ratio_for_symbol(sym)
+            ratio = self._fetch_ratio_for_symbol(sym)
             entry = {"symbol": sym, "industry": sym_industry}
 
             if ratio:
@@ -712,19 +740,19 @@ class StockScreenerTool(BaseTool):
         }
 
 
-    async def _screen_dividend(self, **kwargs) -> Dict[str, Any]:
+    def _screen_dividend(self, **kwargs) -> Dict[str, Any]:
 
         criteria = kwargs.get("criteria", {})
         min_yield = criteria.get("min_yield", 0.05)
         max_results = kwargs.get("max_results", 20)
-        universe = await self._get_universe(kwargs)
+        universe = self._get_universe(kwargs)
 
         matched = []
         scanned = 0
         errors = 0
 
         for sym in universe:
-            ratio = await self._fetch_ratio_for_symbol(sym)
+            ratio = self._fetch_ratio_for_symbol(sym)
             if ratio is None:
                 errors += 1
                 continue
@@ -766,7 +794,7 @@ class StockScreenerTool(BaseTool):
         }
 
 
-    async def _screen_custom(self, **kwargs) -> Dict[str, Any]:
+    def _screen_custom(self, **kwargs) -> Dict[str, Any]:
 
         criteria = kwargs.get("criteria", {})
         if not criteria:
@@ -777,7 +805,7 @@ class StockScreenerTool(BaseTool):
             }
 
         max_results = kwargs.get("max_results", 20)
-        universe = await self._get_universe(kwargs)
+        universe = self._get_universe(kwargs)
 
         # Tách tiêu chí RSI (cần dữ liệu giá riêng)
         rsi_criteria = criteria.pop("rsi", None)
@@ -788,7 +816,7 @@ class StockScreenerTool(BaseTool):
         errors = 0
 
         for sym in universe:
-            ratio = await self._fetch_ratio_for_symbol(sym)
+            ratio = self._fetch_ratio_for_symbol(sym)
             if ratio is None:
                 errors += 1
                 continue
@@ -800,7 +828,7 @@ class StockScreenerTool(BaseTool):
 
             # Kiểm tra RSI nếu có
             if rsi_criteria:
-                df = await self._fetch_price_df(sym, days=100)
+                df = self._fetch_price_df(sym, days=100)
                 if df is None or len(df) < 20:
                     continue
                 rsi_series = ta.momentum.RSIIndicator(df["close"], window=14).rsi()
@@ -817,7 +845,7 @@ class StockScreenerTool(BaseTool):
             # Kiểm tra volume nếu có
             if volume_criteria:
                 if df is None:
-                    df = await self._fetch_price_df(sym, days=30)
+                    df = self._fetch_price_df(sym, days=30)
                 if df is not None:
                     avg_vol = df["volume"].tail(20).mean()
                     vol_min = volume_criteria.get("min")

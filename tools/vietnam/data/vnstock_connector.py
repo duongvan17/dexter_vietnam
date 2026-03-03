@@ -48,8 +48,48 @@ class VnstockTool(BaseTool):
             "market_index": "Dữ liệu chỉ số thị trường (VNINDEX, VN30, HNX, UPCOM)",
         }
 
+    def get_parameters_schema(self) -> dict:
+        symbol_param = {
+            "properties": {
+                "symbol": {
+                    "type": "string",
+                    "description": "Mã cổ phiếu (VD: FPT, VNM, HPG)",
+                }
+            },
+            "required": ["symbol"],
+        }
+        return {
+            "stock_overview": symbol_param,
+            "stock_price": {
+                "properties": {
+                    "symbol": {"type": "string", "description": "Mã cổ phiếu (VD: FPT, VNM)"},
+                    "start": {"type": "string", "description": "Ngày bắt đầu (YYYY-MM-DD), mặc định 6 tháng trước"},
+                    "end": {"type": "string", "description": "Ngày kết thúc (YYYY-MM-DD), mặc định hôm nay"},
+                },
+                "required": ["symbol"],
+            },
+            "financial_report": {
+                "properties": {
+                    "symbol": {"type": "string", "description": "Mã cổ phiếu"},
+                    "report_type": {"type": "string", "description": "Loại báo cáo: BalanceSheet, IncomeStatement, CashFlow"},
+                },
+                "required": ["symbol"],
+            },
+            "financial_ratio": symbol_param,
+            "foreign_trading": symbol_param,
+            "market_index": {
+                "properties": {
+                    "index_name": {
+                        "type": "string",
+                        "description": "Mã chỉ số: VNINDEX, VN30, HNX, UPCOM (mặc định VNINDEX)",
+                    }
+                },
+                "required": [],
+            },
+        }
+
     
-    async def run(self, action: str, **kwargs) -> Dict[str, Any]:
+    def run(self, action: str, **kwargs) -> Dict[str, Any]:
 
         action_map = {
             'stock_overview': self.get_stock_overview,
@@ -67,7 +107,7 @@ class VnstockTool(BaseTool):
             }
         
         try:
-            return await action_map[action](**kwargs)
+            return action_map[action](**kwargs)
         except Exception as e:
             return {
                 "success": False,
@@ -83,7 +123,7 @@ class VnstockTool(BaseTool):
             )
         return self._stock_cache[symbol]
 
-    async def get_stock_overview(self, symbol: str) -> Dict[str, Any]:
+    def get_stock_overview(self, symbol: str) -> Dict[str, Any]:
 
         try:
             stock = self._get_stock(symbol)
@@ -134,7 +174,7 @@ class VnstockTool(BaseTool):
             }
 
     
-    async def get_stock_price(
+    def get_stock_price(
         self, 
         symbol: str, 
         start: Optional[str] = None, 
@@ -203,7 +243,7 @@ class VnstockTool(BaseTool):
             }
     
 
-    async def get_financial_report(
+    def get_financial_report(
         self, 
         symbol: str, 
         report_type: str = 'BalanceSheet',
@@ -250,7 +290,7 @@ class VnstockTool(BaseTool):
                 "error": f"Lỗi lấy báo cáo tài chính {symbol}: {str(e)}"
             }
     
-    async def get_financial_ratio(
+    def get_financial_ratio(
         self, 
         symbol: str, 
         period: str = 'quarter'
@@ -283,7 +323,7 @@ class VnstockTool(BaseTool):
                 "error": f"Lỗi lấy chỉ số tài chính {symbol}: {str(e)}"
             }
     
-    async def get_foreign_trading(
+    def get_foreign_trading(
         self,
         symbol: str,
         start: Optional[str] = None,
@@ -358,7 +398,7 @@ class VnstockTool(BaseTool):
                 "error": f"Lỗi lấy giao dịch khối ngoại {symbol}: {str(e)}"
             }
     
-    async def get_market_index(
+    def get_market_index(
         self,
         index_code: str = "VNINDEX",
         start: Optional[str] = None,

@@ -1,12 +1,14 @@
-
+"""
+LLM Wrapper - OpenRouter only, synchronous.
+"""
 from typing import Optional, List, Dict, Any
 import json
 import logging
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+from openai import OpenAI
 
-# Đảm bảo .env được load trước khi đọc API key
 _env_path = Path(__file__).resolve().parent.parent / ".env"
 load_dotenv(_env_path)
 
@@ -14,143 +16,61 @@ logger = logging.getLogger(__name__)
 
 
 class LLMWrapper:
-    """Wrapper class for different LLM providers"""
-
-    SUPPORTED_PROVIDERS = ("openai", "anthropic", "google")
 
     def __init__(
         self,
-        provider: str = "openai",
         model: Optional[str] = None,
         api_key: Optional[str] = None,
         temperature: float = 0.1,
         max_tokens: int = 4096,
+        **kwargs,  # ignore legacy provider arg etc.
     ):
-        self.provider = provider.lower()
+        self.provider = "openrouter"
+        self.model = model or os.getenv("LLM_MODEL", "google/gemini-2.0-flash-001")
         self.temperature = temperature
         self.max_tokens = max_tokens
-        self._client = None
 
-        if self.provider not in self.SUPPORTED_PROVIDERS:
-            raise ValueError(
-                f"Provider '{provider}' not supported. "
-                f"Use: {self.SUPPORTED_PROVIDERS}"
-            )
-
-        # Default models per provider
-        default_models = {
-            "openai": "gpt-4o",
-            "anthropic": "claude-sonnet-4-20250514",
-            "google": "gemini-2.0-flash",
-        }
-        self.model = model or default_models[self.provider]
-
-        # Resolve API key
-        key_env_map = {
-            "openai": "OPENAI_API_KEY",
-            "anthropic": "ANTHROPIC_API_KEY",
-            "google": "GOOGLE_API_KEY",
-        }
-        self.api_key = api_key or os.getenv(key_env_map[self.provider])
+        self.api_key = api_key or os.getenv("OPENROUTER_API_KEY")
         if not self.api_key:
             raise ValueError(
-                f"API key for {self.provider} not found. "
-                f"Set {key_env_map[self.provider]} in .env"
+                "OPENROUTER_API_KEY not found. Set it in .env or pass via api_key."
             )
 
-        self._init_client()
+        self._client = OpenAI(
+            api_key=self.api_key,
+            base_url="https://openrouter.ai/api/v1",
+        )
 
-    def _init_client(self):
-        """Initialize the LLM client based on provider."""
-        if self.provider == "openai":
-            from openai import OpenAI
-            self._client = OpenAI(api_key=self.api_key)
 
-        elif self.provider == "anthropic":
-            from anthropic import Anthropic
-            self._client = Anthropic(api_key=self.api_key)
+    def generate(self, prompt: str, system_prompt: Optional[str] = None) -> str:
 
-        elif self.provider == "google":
-            from google import genai
-            self._client = genai.Client(api_key=self.api_key)
-
-    async def generate(
-        self,
-        prompt: str,
-        system_prompt: Optional[str] = None,
-    ) -> str:
-
-        try:
-            if self.provider == "openai":
-                return self._generate_openai(prompt, system_prompt)
-            elif self.provider == "anthropic":
-                return self._generate_anthropic(prompt, system_prompt)
-            elif self.provider == "google":
-                return self._generate_google(prompt, system_prompt)
-        except Exception as e:
-            logger.error(f"LLM generation error ({self.provider}): {e}")
-            raise
-
-    def _generate_openai(self, prompt: str, system_prompt: Optional[str]) -> str:
         messages = []
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
         messages.append({"role": "user", "content": prompt})
 
-        response = self._client.chat.completions.create(
-            model=self.model,
-            messages=messages,
-            temperature=self.temperature,
-            max_tokens=self.max_tokens,
-        )
-        return response.choices[0].message.content
-
-    def _generate_anthropic(self, prompt: str, system_prompt: Optional[str]) -> str:
-        kwargs = {
-            "model": self.model,
-            "max_tokens": self.max_tokens,
-            "temperature": self.temperature,
-            "messages": [{"role": "user", "content": prompt}],
-        }
-        if system_prompt:
-            kwargs["system"] = system_prompt
-
-        response = self._client.messages.create(**kwargs)
-        return response.content[0].text
-
-    def _generate_google(self, prompt: str, system_prompt: Optional[str]) -> str:
-        from google.genai import types
-
-        full_prompt = prompt
-        if system_prompt:
-            full_prompt = f"{system_prompt}\n\n---\n\n{prompt}"
-
-        response = self._client.models.generate_content(
-            model=self.model,
-            contents=full_prompt,
-            config=types.GenerateContentConfig(
+        try:
+            response = self._client.chat.completions.create(
+                model=self.model,
+                messages=messages,
                 temperature=self.temperature,
-                max_output_tokens=self.max_tokens,
-            ),
-        )
-        return response.text
+                max_tokens=self.max_tokens,
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            logger.error(f"LLM generation error: {e}")
+            raise
 
-    async def generate_json(
-        self,
-        prompt: str,
-        system_prompt: Optional[str] = None,
-    ) -> dict:
-        """Generate structured JSON output from LLM."""
+    def generate_json(self, prompt: str, system_prompt: Optional[str] = None) -> dict:
+
         json_instruction = (
             "\n\nIMPORTANT: Return ONLY valid JSON. "
             "No markdown, no code blocks, no explanation outside JSON."
         )
-        raw = await self.generate(prompt + json_instruction, system_prompt)
+        raw = self.generate(prompt + json_instruction, system_prompt)
 
-        # Clean up potential markdown wrapping
         text = raw.strip()
         if text.startswith("```"):
-            # Remove ```json ... ```
             lines = text.split("\n")
             lines = [l for l in lines if not l.strip().startswith("```")]
             text = "\n".join(lines)
@@ -160,3 +80,45 @@ class LLMWrapper:
         except json.JSONDecodeError:
             logger.warning(f"Failed to parse JSON from LLM, raw: {text[:200]}")
             return {"raw_response": text, "parse_error": True}
+
+
+    def generate_with_tools(
+        self,
+        messages: List[Dict[str, Any]],
+        tools: List[Dict[str, Any]],
+        system_prompt: Optional[str] = None,
+    ) -> Dict[str, Any]:
+
+        msgs = list(messages)
+        if system_prompt and (not msgs or msgs[0].get("role") != "system"):
+            msgs.insert(0, {"role": "system", "content": system_prompt})
+
+        response = self._client.chat.completions.create(
+            model=self.model,
+            messages=msgs,
+            tools=tools,
+            temperature=self.temperature,
+            max_tokens=self.max_tokens,
+        )
+
+        choice = response.choices[0]
+        msg = choice.message
+
+        tool_calls = []
+        if msg.tool_calls:
+            for tc in msg.tool_calls:
+                try:
+                    args = json.loads(tc.function.arguments)
+                except (json.JSONDecodeError, TypeError):
+                    args = {}
+                tool_calls.append({
+                    "id": tc.id,
+                    "function_name": tc.function.name,
+                    "arguments": args,
+                })
+
+        return {
+            "content": msg.content,
+            "tool_calls": tool_calls,
+            "raw": response,
+        }
