@@ -41,47 +41,6 @@ class LLMWrapper:
             base_url="https://openrouter.ai/api/v1",
         )
 
-
-    def generate(self, prompt: str, system_prompt: Optional[str] = None) -> str:
-
-        messages = []
-        if system_prompt:
-            messages.append({"role": "system", "content": system_prompt})
-        messages.append({"role": "user", "content": prompt})
-
-        try:
-            response = self._client.chat.completions.create(
-                model=self.model,
-                messages=messages,
-                temperature=self.temperature,
-                max_tokens=self.max_tokens,
-            )
-            return response.choices[0].message.content
-        except Exception as e:
-            logger.error(f"LLM generation error: {e}")
-            raise
-
-    def generate_json(self, prompt: str, system_prompt: Optional[str] = None) -> dict:
-
-        json_instruction = (
-            "\n\nIMPORTANT: Return ONLY valid JSON. "
-            "No markdown, no code blocks, no explanation outside JSON."
-        )
-        raw = self.generate(prompt + json_instruction, system_prompt)
-
-        text = raw.strip()
-        if text.startswith("```"):
-            lines = text.split("\n")
-            lines = [l for l in lines if not l.strip().startswith("```")]
-            text = "\n".join(lines)
-
-        try:
-            return json.loads(text)
-        except json.JSONDecodeError:
-            logger.warning(f"Failed to parse JSON from LLM, raw: {text[:200]}")
-            return {"raw_response": text, "parse_error": True}
-
-
     def generate_with_tools(
         self,
         messages: List[Dict[str, Any]],

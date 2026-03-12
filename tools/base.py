@@ -28,9 +28,6 @@ class BaseTool(ABC):
         """Execute the tool (synchronous)"""
         pass
 
-    # ------------------------------------------------------------------
-    # Native function-calling support
-    # ------------------------------------------------------------------
 
     def get_parameters_schema(self) -> Dict[str, Dict[str, Any]]:
         """Return per-action JSON-Schema for parameters."""
